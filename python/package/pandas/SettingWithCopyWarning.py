@@ -37,9 +37,14 @@ def direct_partly_assign():
     """
     df = pd.DataFrame({'a': [0, 1, 2], 'b': [3, 4, 5]}, index=['x', 'y', 'z'])
 
-    dfpart = df[:5]
-    print(id(dfpart), id(df))  # 深拷贝
-    dfpart['a'] = dfpart['a'].apply(lambda x: str(x) + '_new')
+    dfpart_idx = df[:5]
+    print(id(dfpart_idx), id(df))  # 深拷贝
+    dfpart_idx['a'] = dfpart_idx['a'].apply(lambda x: str(x) + '_new')
+
+    dfpart_col = df[['a']]
+    print(id(dfpart_col), id(df))  # 深拷贝
+    # 此时赋值，出现了# SettingWithCopyWarning
+    dfpart_col['a'] = dfpart_col['a'].apply(lambda x: str(x) + '_new')
 
     return df
 
@@ -73,7 +78,7 @@ if __name__ == "__main__":
     # direct_assign()
 
     # 2、
-    # direct_partly_assign()
+    direct_partly_assign()
 
     # # 3、
     # data = pd.DataFrame({'a': [0, 1, 2], 'b': [3, 4, 5]}, index=['x', 'y', 'z'])
@@ -81,7 +86,7 @@ if __name__ == "__main__":
     # res = address_passing_partly(data)
     # print("返回的结果的地址：", id(res))
 
-    # 4、
-    data = pd.DataFrame({'a': [0, 1, 2], 'b': [3, 4, 5]}, index=['x', 'y', 'z'])
-    global_inplace_passing()
-    print("函数体内的地址：", id(data))
+    # # 4、
+    # data = pd.DataFrame({'a': [0, 1, 2], 'b': [3, 4, 5]}, index=['x', 'y', 'z'])
+    # global_inplace_passing()
+    # print("函数体内的地址：", id(data))
