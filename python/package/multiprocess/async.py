@@ -22,9 +22,18 @@ import threading
 
 
 # ========================= 简单案例：定义、执行 =======================
-async def my_sleep(s):
+"""
+【注意】：一定是asyncio.sleep()，否则无法交替执行
+"""
+async def my_sleep_must_be_failed(s):
     print('in coroutine')
     time.sleep(s)
+    return 'my sleep'
+
+
+async def my_sleep(s):
+    print('in coroutine')
+    asyncio.sleep(s)
     return 'my sleep'
 
 # loop = asyncio.get_event_loop()
@@ -33,6 +42,75 @@ async def my_sleep(s):
 # print(result)
 # loop.close()
 
+
+# ========================= async和await机制 =======================
+"""
+async是用来定义线程函数，线程函数__call__()执行后，才是一个线程对象
+await获取线程对象的return结果
+【注意】await是阻塞的，会等待结果。但是，在【事件循环】中，await会将控制权移交给事件循环，从而调度其他线程
+"""
+async def concurrent1():
+    print('0')
+    await asyncio.sleep(3)
+    print('1')
+    
+    return 
+
+
+async def main():
+    r = await concurrent1()
+    print('main')
+
+
+# asyncio.run(main())
+
+
+async def concurrent2():
+    await asyncio.sleep(1)
+    print('2')
+
+    return 
+
+
+# 多个await = 同步代码
+async def multi_wait():
+
+    r1 = await concurrent1()
+
+    r2 = await concurrent2()
+
+# asyncio.run(multi_wait())
+
+# 事件循环中的await
+# loop = asyncio.get_event_loop()
+# result = loop.run_until_complete(asyncio.wait([concurrent1(), concurrent2()]))
+# loop.close()
+
+# ========================= task和future ===========================
+"""
+task是事件循环能够管理的对象，我们如果要使用并发特性需要将线程对象封装成task
+其实上述的loop.run_until_complete(asyncio.wait([concurrent1(), concurrent2()]))
+是将线程对象封装成task
+"""
+# 多个await task
+async def multi_wait_task():
+
+    task1 = asyncio.create_task(concurrent1())
+    task2 = asyncio.create_task(concurrent2())
+
+    print("create_task后的类型为：", type(task1))
+    r1 = await task1
+    r2 = await task2
+
+
+# asyncio.run(multi_wait_task())
+
+
+# ========================== asyncio wait和gather的区别 ====================
+"""
+wait返回线程对象执行结果和状态，且是无序的
+gather有序地返回线程对象的返回结果
+"""
 
 # ========================= 协程之间的调用 ===================
 async def hello_async():
@@ -60,14 +138,11 @@ async def hello_self():
 # loop.run_until_complete(asyncio.wait(tasks))    # 顺序执行，第一个hello整体结束，再调第二个
 # loop.close()
 
-
-# ======================== 尝试gather方式，还是不行 ====================
 async def gather_tasks():
     tasks = [hello_self(), hello_self()]
     await asyncio.gather(*tasks)
 
-# # 顺序执行，第一个hello整体结束，再调第二个
-# asyncio.run(gather_tasks())
+# asyncio.run(gather_tasks())                      # 尝试gather方式，还是不行 顺序执行，第一个hello整体结束，再调第二个
 
 
 # ======================= 为什么自定义的不行呢 ==========================
@@ -100,41 +175,6 @@ async def hello_call_soon(loop):
 # # 直接报错
 # tasks = [hello_call_soon(loop), hello_call_soon(loop)]
 # loop.run_until_complete(asyncio.wait(tasks))
-# loop.close()
-
-
-# ========================= 失败案使用async和await =======================
-async def hello_failed():
-    print('start hello: %s' % threading.currentThread())
-    r = await my_sleep(3)  # await获取函数的返回值
-    print(f"await的结果类型为： {type(r)}, 值为： {r if r is not None else 'None'}")
-    print('finish hello: %s' % threading.currentThread())
-
-
-async def hello_failed_too():
-    print('start hello: %s' % threading.currentThread())
-    await my_sleep(3)  # await获取函数的返回值
-    print(f"not assgin")
-    print('finish hello: %s' % threading.currentThread())
-
-
-async def my_print(s, name):
-    time.sleep(s)
-    return f'Hello {name}'
-
-
-async def hello_without_print_in_main():
-    r1 = await my_print(3, 'P1')  # await获取函数的返回倷
-    print(f"r1: {r1}")
-    
-    r2 = await my_print(1, 'P2')
-    print(f"r2: {r2}")
-
-
-# # 获取EventLoop:
-# loop = asyncio.get_event_loop()
-# # print("*" * 10)
-# loop.run_until_complete(hello_without_print_in_main())
 # loop.close()
 
 

@@ -52,3 +52,26 @@ def producer(c):
 c = consumer()
 print(type(c))
 producer(c)
+
+
+# ========================= 原理 =====================================
+# 生成器之间的切换 除了此案例还有OneNote上的send方法
+def generator():
+    n = 0
+    while n < 10:
+        print(f'生产者中, 生成第{n + 1} 个结果...')
+        yield n
+        time.sleep(2)
+
+    yield None
+
+
+def consumer(gen):
+    while True:
+        n = gen.__next__()
+        print(f'消费者中, 消费第{n + 1} 个结果...')
+
+
+# 交替【切换】进行
+gen = generator()
+consumer(gen)
