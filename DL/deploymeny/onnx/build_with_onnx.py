@@ -6,6 +6,7 @@
 @Author :   yhao 
 @Email  :   data4.cmi@unilever.com
 @Desc   :   build and learn basic onnx model with onnx api
+            refer: https://onnx.ai/onnx/intro/python.html
 '''
 
 import logging
@@ -35,6 +36,14 @@ from onnx.helper import make_opsetid, make_function
 
 from onnx import AttributeProto
 from onnx.helper import make_tensor
+
+import onnx.parser
+import onnx.checker
+from onnx import shape_inference
+
+from onnx.reference import ReferenceEvaluator
+from onnx.reference.op_run import OpRun
+import timeit
 
 
 def netron_web(output_path, port=8081):
@@ -655,6 +664,285 @@ def custom_func_wiattr(output_path, web=False):
         f.write(onnx_model.SerializeToString())
 
 
+def checker_and_shape_inference():
+    """
+    check_model:
+        This work for all operators defined in the main domain or the ML domain. 
+        It remains silent for any custom operator not defined in any specification
+
+    shape_inference:
+        estimate the shape and the type of intermediate results. 
+        If known, the runtime can estimate the memory consumption beforehand and optimize the computation. 
+        It can fuse some operators, it can do the computation inplace…
+
+        Shape inference does not work all the time. For example, a Reshape operator. 
+        Shape inference only works if the shape is constant. 
+        If not constant, the shape cannot be easily inferred unless the following nodes expect specific shape
+    """
+    input = '''
+        <
+            ir_version: 8,
+            opset_import: [ "" : 15]
+        >
+        agraph (float[I,4] X, float[4,2] A, int[4] B) => (float[I] Y) {
+            XA = MatMul(X, A)
+            Y = Add(XA, B)
+        }
+        '''
+    try:
+        onnx_model = onnx.parser.parse_model(input)
+        onnx.checker.check_model(onnx_model)
+    except Exception as e:
+        print(e)
+
+    input = '''
+        <
+            ir_version: 8,
+            opset_import: [ "" : 15]
+        >
+        agraph (float[I,4] X, float[4,2] A, float[4] B) => (float[I] Y) {
+            XA = MatMul(X, A)
+            Y = Add(XA, B)
+        }
+        '''
+    onnx_model = onnx.parser.parse_model(input)
+    inferred_model = shape_inference.infer_shapes(onnx_model)
+    logger.info(f"type inferred_model: {type(inferred_model)}")  # ModelProto
+    print(inferred_model)
+
+
+def evaluation_and_runtime():
+    """runtime.InferenceSession: subgraph_if
+    
+    Similar code would also work on GraphProto or FunctionProto.
+    """
+    # Evaluation of a model
+    X = make_tensor_value_info('X', TensorProto.FLOAT, [None, None])
+    A = make_tensor_value_info('A', TensorProto.FLOAT, [None, None])
+    B = make_tensor_value_info('B', TensorProto.FLOAT, [None, None])
+    Y = make_tensor_value_info('Y', TensorProto.FLOAT, [None])
+    node1 = make_node('MatMul', ['X', 'A'], ['XA'])
+    node2 = make_node('Add', ['XA', 'B'], ['Y'])
+    graph = make_graph([node1, node2], 'lr', [X, A, B], [Y])
+    onnx_model = make_model(graph)
+    check_model(onnx_model)
+
+    sess = ReferenceEvaluator(onnx_model)
+
+    x = np.random.randn(4, 2).astype(np.float32)
+    a = np.random.randn(2, 1).astype(np.float32)
+    b = np.random.randn(1, 1).astype(np.float32)
+    feeds = {'X': x, 'A': a, 'B': b}
+
+    print(sess.run(None, feeds))
+
+    # Evaluation of a node
+    node = make_node("EyeLike", ['X'], ['Y'])
+    sess = ReferenceEvaluator(node)
+    x = np.random.randn(4, 2).astype(np.float32)
+    feeds = {'X': x}
+
+    print(sess.run(None, feeds))
+
+
+def evaluation_step_by_step():
+    """
+    Complex models usually do not work on the first try and seeing intermediate results may help to find the part incorrectly converted. 
+    Parameter verbose displays information about intermediate results.
+    """
+    X = make_tensor_value_info('X', TensorProto.FLOAT, [None, None])
+    A = make_tensor_value_info('A', TensorProto.FLOAT, [None, None])
+    B = make_tensor_value_info('B', TensorProto.FLOAT, [None, None])
+    Y = make_tensor_value_info('Y', TensorProto.FLOAT, [None])
+    node1 = make_node('MatMul', ['X', 'A'], ['XA'])
+    node2 = make_node('Add', ['XA', 'B'], ['Y'])
+    graph = make_graph([node1, node2], 'lr', [X, A, B], [Y])
+    onnx_model = make_model(graph)
+    check_model(onnx_model)
+
+    for verbose in [1, 2, 3, 4]:
+        print()
+        print(f"------ verbose={verbose}")
+        print()
+        sess = ReferenceEvaluator(onnx_model, verbose=verbose)
+
+        x = np.random.randn(4, 2).astype(np.float32)
+        a = np.random.randn(2, 1).astype(np.float32)
+        b = np.random.randn(1, 1).astype(np.float32)
+        feeds = {'X': x, 'A': a, 'B': b}
+
+        print(sess.run(None, feeds))
+
+
+def evaluate_custom_node(output_dir):
+    """
+    combine operators EyeLike and Add into AddEyeLike to make it more efficient. 
+    Next example replaces these two operators by a single one from domain 'optimized'.
+
+    fusion:
+        Two consecutive operators are fused into an optimized version of both
+    """
+    X = make_tensor_value_info('X', TensorProto.FLOAT, [None, None])
+    A = make_tensor_value_info('A', TensorProto.FLOAT, [None, None])
+    B = make_tensor_value_info('B', TensorProto.FLOAT, [None, None])
+    Y = make_tensor_value_info('Y', TensorProto.FLOAT, [None])
+    node0 = make_node('EyeLike', ['A'], ['Eye'])
+    node1 = make_node('Add', ['A', 'Eye'], ['A1'])
+    node2 = make_node('MatMul', ['X', 'A1'], ['XA1'])
+    node3 = make_node('Add', ['XA1', 'B'], ['Y'])
+    graph_orin = make_graph([node0, node1, node2, node3], 'lr_orin', [X, A, B], [Y])
+    onnx_model_orin = make_model(graph_orin)
+    check_model(onnx_model_orin)
+    with open(output_dir / "linear_regression_orin.onnx", "wb") as f:
+        f.write(onnx_model_orin.SerializeToString())
+    sess_orin = ReferenceEvaluator(onnx_model_orin, verbose=2)
+
+    node01 = make_node("AddEyeLike", ['A'], ['A1'], domain="optimized")
+    graph_cust = make_graph([node01, node2, node3], 'lr_cust', [X, A, B], [Y])
+    onnx_model_cust = make_model(graph_cust, opset_imports=[
+        make_opsetid('', 18), make_opsetid('optimized', 1)
+    ])
+    check_model(onnx_model_cust)
+    with open(output_dir / "linear_regression_cust.onnx", "wb") as f:
+        f.write(onnx_model_cust.SerializeToString())
+
+    # define the oprun of custom node for the purpose of inference
+    class AddEyeLike(OpRun):
+
+        op_domain = "optimized"
+
+        def _run(self, X, alpha=1.0):
+            assert len(X.shape) == 2
+            assert X.shape[0] == X.shape[1]
+            X = X.copy()
+            ind = np.diag_indices(X.shape[0])
+            X[ind] += alpha
+            return (X, )
+
+    sess_cust = ReferenceEvaluator(
+        proto=onnx_model_cust,
+        verbose=2,
+        new_ops=[AddEyeLike]
+    )
+
+    # Let's check with the previous model.
+    x = np.random.randn(4, 2).astype(np.float32)
+    a = np.random.randn(2, 2).astype(np.float32) / 10
+    b = np.random.randn(1, 2).astype(np.float32)
+    feeds = {'X': x, 'A': a, 'B': b}
+
+    logger.info(f"Reference progress of onnx_model_orin")
+    y_orin = sess_orin.run(None, feeds)[0]
+    logger.info(f"Reference progress of onnx_model_cust")
+    y_cust = sess_cust.run(None, feeds)[0]
+    print(y_orin)
+    print(y_cust)
+    print(f"difference: {np.abs(y_orin - y_cust).max()}")
+
+    # Efficency comparasion
+    x = np.random.randn(4, 1000).astype(np.float32)
+    a = np.random.randn(1000, 1000).astype(np.float32) / 10
+    b = np.random.randn(1, 1000).astype(np.float32)
+    feeds = {'X': x, 'A': a, 'B': b}
+    
+    # proto: str
+    sess_orin = ReferenceEvaluator(str(output_dir / "linear_regression_orin.onnx"))
+    sess_cust = ReferenceEvaluator(str(output_dir / "linear_regression_cust.onnx"), new_ops=[AddEyeLike])
+    y_orin = sess_orin.run(None, feeds)[0]
+    y_cust = sess_cust.run(None, feeds)[0]
+    print(f"difference: {np.abs(y_orin - y_cust).max()}")
+    print(f"time with EyeLike+Add: {timeit.timeit(lambda: sess_orin.run(None, feeds), number=1000)}")
+    print(f"time with AddEyeLike: {timeit.timeit(lambda: sess_cust.run(None, feeds), number=1000)}")
+
+
+def implementation_details():
+    """
+    Python and C++
+        onnx relies on protobuf to define its type. 
+        You would assume that a python object is just a wrapper around a C pointer on the internal structure. 
+        Therefore, it should be possible to access internal data from a function receiving a python object of type ModelProto. 
+        But it is not. According to Protobuf 4, changes, this is no longer possible after version 4 and it is safer to 
+        assume the only way to get a hold on the content is to serialize the model into bytes, give it the C function, 
+        then deserialize it. Functions like check_model or shape_inference are calling SerializeToString then ParseFromString 
+        before checking the model with a C code. 
+    Attributes and inputs
+        There is a clear distinction between the two. 
+        Inputs are dynamic and may change at every execution. 
+        Attributes never changes and an optimizer can improve the execution graph assuming it never changes. 
+        Therefore, it is impossible to turn an input into an attribute. 
+        And the operator Constant is the only operator changing an attribute into an input.
+    """
+    pass
+
+
+def shape_or_no_shape():
+    """
+    onnx usually expects a shape for every input or output assuming the rank (or the number of dimensions) is known. 
+    What if we need to create a valid graph for every dimension? This case is still puzzling.
+    """
+    def create_model(shapes):
+        new_domain = 'custom'
+        opset_imports = [make_opsetid("", 14), make_opsetid(new_domain, 1)]
+
+        node1 = make_node('MatMul', ['X', 'A'], ['XA'])
+        node2 = make_node('Add', ['XA', 'A'], ['Y'])
+
+        X = make_tensor_value_info('X', TensorProto.FLOAT, shapes['X'])
+        A = make_tensor_value_info('A', TensorProto.FLOAT, shapes['A'])
+        Y = make_tensor_value_info('Y', TensorProto.FLOAT, shapes['Y'])
+
+        graph = make_graph([node1, node2], 'example', [X, A], [Y])
+
+        onnx_model = make_model(graph, opset_imports=opset_imports)
+        # Let models runnable by onnxruntime with a released ir_version
+        onnx_model.ir_version = 8
+
+        return onnx_model
+
+    print("----------- case 1: 2D x 2D -> 2D")
+    onnx_model = create_model({'X': [None, None], 'A': [None, None], 'Y': [None, None]})
+    check_model(onnx_model)
+    sess = InferenceSession(onnx_model.SerializeToString(),
+                            providers=["CPUExecutionProvider"])
+    res = sess.run(None, {
+        'X': np.random.randn(2, 2).astype(np.float32),
+        'A': np.random.randn(2, 2).astype(np.float32)})
+    print(res)
+
+    print("----------- case 2: 2D x 1D -> 1D")
+    onnx_model = create_model({'X': [None, None], 'A': [None], 'Y': [None]})
+    check_model(onnx_model)
+    sess = InferenceSession(onnx_model.SerializeToString(),
+                            providers=["CPUExecutionProvider"])
+    res = sess.run(None, {
+        'X': np.random.randn(2, 2).astype(np.float32),
+        'A': np.random.randn(2).astype(np.float32)})
+    print(res)
+
+    print("----------- case 3: 2D x 0D -> 0D")
+    onnx_model = create_model({'X': [None, None], 'A': [], 'Y': []})
+    check_model(onnx_model)
+    try:
+        InferenceSession(onnx_model.SerializeToString(),
+                        providers=["CPUExecutionProvider"])
+    except Exception as e:
+        print(e)
+
+    print("----------- case 4: 2D x None -> None")
+    onnx_model = create_model({'X': [None, None], 'A': None, 'Y': None})
+    try:
+        check_model(onnx_model)
+    except Exception as e:
+        print(type(e), e)
+    sess = InferenceSession(onnx_model.SerializeToString(),
+                            providers=["CPUExecutionProvider"])
+    res = sess.run(None, {
+        'X': np.random.randn(2, 2).astype(np.float32),
+        'A': np.random.randn(2).astype(np.float32)})
+    print(res)
+    print("----------- end")
+
+
 if __name__ == "__main__":
 
     output_path = Path("/home/yhao/data/onnx")
@@ -667,6 +955,11 @@ if __name__ == "__main__":
     # subgraph_if(output_path / "onnx_if_sign.onnx")
     # subgraph_scan(output_path / "knnr.onnx", web=False)
     # custom_func_woattr(output_path / "custom_func_woattr.onnx", web=False)
-    custom_func_wiattr(output_path / "custom_func_wiattr.onnx", web=False)
+    # custom_func_wiattr(output_path / "custom_func_wiattr.onnx", web=False)
+    # checker_and_shape_inference()
+    # evaluation_and_runtime()
+    # evaluation_step_by_step()
+    # evaluate_custom_node(output_path)
+    shape_or_no_shape()
 
     print()
