@@ -22,6 +22,7 @@ from inspect import signature
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoConfig
 from onnx.reference import ReferenceEvaluator
+from onnxruntime import InferenceSession
 
 from cln import DistilBertForSequenceClassification
 
@@ -29,19 +30,10 @@ tokenizer = AutoTokenizer.from_pretrained("/media/data/pretrained_models/Distilb
 
 
 def load_torch_model(modelpath):
-    config = AutoConfig.from_pretrained(
-        modelpath,
-        num_labels=4,
-        ignore_mismatched_sizes=True
-    )
-        
-    cemb_kwargs = {
-        "cond_size": 6,
-        "cond_dims": 128
-    }
-    model = DistilBertForSequenceClassification(config, **cemb_kwargs).to('cpu')
+    model = DistilBertForSequenceClassification.from_pretrained(modelpath).eval().to('cpu')
 
     return model
+
 
 def load_and_convert(modelpath, modelname):
     model = load_torch_model(modelpath)
@@ -86,12 +78,21 @@ def onnx_vs_torch(sentence, output_path, model_name):
         k: np.expand_dims(v, 0) for k, v in input_dict.items()
     }
     input_dict_array.update({"condition_ids": np.array([1])})
-    sess_onnx = ReferenceEvaluator(str(output_path / f"{model_name}.onnx"))
-    y_onnx = sess_onnx.run(None, input_dict_array)[0]
+    # sess_onnx = ReferenceEvaluator(str(output_path / f"{model_name}.onnx"))
+    # InferenceSession more faster
+    sess_onnx = InferenceSession(
+        path_or_bytes=str(output_path / f"{model_name}.onnx"),
+        providers=['CPUExecutionProvider']
+    )
+    y_onnx = sess_onnx.run(None, input_dict_array)[0][0]
 
-    print(f"difference: {np.abs(y_torch - y_onnx).max()}")
-    print(f"time with EyeLike+Add: {timeit.timeit(lambda: torch_model(**input_dict), number=1000)}")
-    print(f"time with AddEyeLike: {timeit.timeit(lambda: sess_onnx.run(None, input_dict), number=1000)}")
+    print(f"result of torch_model:\t {y_torch.tolist()}")
+    print(f"result of onnx model:\t {y_onnx}")
+    print(f"difference: {np.abs(y_torch - y_onnx).max()}")  # 4.76837158203125e-07
+    # 11.286639904021285
+    print(f"time with torch_mode.forward: {timeit.timeit(lambda: torch_model(**input_dict), number=100)}")
+    # 12.064857240009587
+    print(f"time with onnx inference: {timeit.timeit(lambda: sess_onnx.run(None, input_dict_array), number=100)}")
 
 
 if __name__ == "__main__":
