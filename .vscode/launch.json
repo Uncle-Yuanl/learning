@@ -11,6 +11,16 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false
+        },
+        {
+            "name": "Transformers",
+            "type": "python",
+            "python": "/usr/local/anaconda3/envs/torch/bin/python3.9",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
         }
     ]
 }
