@@ -11,9 +11,10 @@ pipe = pipeline(
 )
 
 while True:
-    prompt = input("Enter a prompt: ")
+    prompt = input("Enter a prompt: \n")
     if prompt == "quit":
         break
+    print(f"Here's the LlaMa output: \n")
     print(pipe(prompt, max_length=5000, num_return_sequences=1)[0]['generated_text'])
     print("="*20)
 
