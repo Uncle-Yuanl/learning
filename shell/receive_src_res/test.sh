@@ -8,5 +8,5 @@ else
     echo 'interrupted'
 fi
 
-echo 'pid: ' | head -n 1 /home/yhao/learning/shell/test.py | xargs echo
-head -n 1 /home/yhao/learning/shell/test.py | 'pid: ' xargs echo
+echo 'pid: ' | head -n 1 /home/yhao/code/learning/shell/test.py | xargs echo
+head -n 1 /home/yhao/code/learning/shell/test.py | 'pid: ' xargs echo

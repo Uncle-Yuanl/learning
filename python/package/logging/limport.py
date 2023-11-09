@@ -16,7 +16,7 @@ logging.basicConfig(
 logger = logging.getLogger(f'【{__file__}】')
 
 import sys
-sys.path.append("/home/yhao/learning/python/func")
+sys.path.append("/home/yhao/code/learning/python/func")
 from lmodule import fun_with_logger
 
 

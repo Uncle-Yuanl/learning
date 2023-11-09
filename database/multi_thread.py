@@ -18,7 +18,7 @@ libc = ctypes.cdll.LoadLibrary('libc.so.6')
 SYS_gettid = 186
 
 import sys
-sys.path.append('/home/yhao/learning')
+sys.path.append('/home/yhao/code/learning')
 from utils import timer
 
 
