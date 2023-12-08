@@ -31,6 +31,7 @@ tokenizer = AutoTokenizer.from_pretrained("/media/data/pretrained_models/Distilb
 
 def load_torch_model(modelpath):
     model = DistilBertForSequenceClassification.from_pretrained(modelpath).eval().to('cpu')
+    # model = AutoModelForSequenceClassification.from_pretrained(modelpath).eval().to('cpu')
 
     return model
 
@@ -65,19 +66,31 @@ def onnx_vs_torch(sentence, output_path, model_name):
     """
     input_dict = tokenizer(sentence)
     input_dict = {k: torch.LongTensor(v + [0] * (512 - len(v))) for k, v in input_dict.items()}
-    input_dict.update({"condition_ids": torch.LongTensor([1])})
 
     torch_model = load_torch_model(output_path)
+    
+    if isinstance(torch_model, DistilBertForSequenceClassification):
+        input_dict.update({"condition_ids": torch.LongTensor([1])})
+        input_dict_array = {
+            k: np.expand_dims(v, 0) for k, v in input_dict.items()
+        }
+        input_dict_array.update({"condition_ids": np.array([1])})
+    else:
+        input_dict = {
+            k: torch.unsqueeze(v, 0) for k, v in input_dict.items()
+        }
+
+        input_dict_array = {
+            k: np.array(v) for k, v in input_dict.items()
+        }
+        input_dict_array.update({"condition_ids": np.array([1])})
+
     def _infer(model, inputs):
         with torch.no_grad():
             return model(**inputs).logits[0]
         
     y_torch = _infer(torch_model, input_dict)
-
-    input_dict_array = {
-        k: np.expand_dims(v, 0) for k, v in input_dict.items()
-    }
-    input_dict_array.update({"condition_ids": np.array([1])})
+    
     # sess_onnx = ReferenceEvaluator(str(output_path / f"{model_name}.onnx"))
     # InferenceSession more faster
     sess_onnx = InferenceSession(
@@ -97,6 +110,7 @@ def onnx_vs_torch(sentence, output_path, model_name):
 
 if __name__ == "__main__":
     output_path = Path("/home/yhao/data/onnx/disbert_cln")
+    # output_path = Path("/media/data/pretrained_models/reward-deberta-v3-large-aspect")
     modelname = 'model_wisignature'
     
     # load_and_convert(output_path, modelname)
