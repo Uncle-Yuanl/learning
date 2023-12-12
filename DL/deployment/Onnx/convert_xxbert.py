@@ -30,8 +30,8 @@ tokenizer = AutoTokenizer.from_pretrained("/media/data/pretrained_models/Distilb
 
 
 def load_torch_model(modelpath):
-    model = DistilBertForSequenceClassification.from_pretrained(modelpath).eval().to('cpu')
-    # model = AutoModelForSequenceClassification.from_pretrained(modelpath).eval().to('cpu')
+    # model = DistilBertForSequenceClassification.from_pretrained(modelpath).eval().to('cpu')
+    model = AutoModelForSequenceClassification.from_pretrained(modelpath).eval().to('cpu')
 
     return model
 
@@ -109,18 +109,19 @@ def onnx_vs_torch(sentence, output_path, model_name):
 
 
 if __name__ == "__main__":
-    output_path = Path("/home/yhao/data/onnx/disbert_cln")
+    # output_path = Path("/home/yhao/data/onnx/disbert_cln")
     # output_path = Path("/media/data/pretrained_models/reward-deberta-v3-large-aspect")
+    output_path = Path("/home/yhao/data/onnx/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7")
     modelname = 'model_wisignature'
     
-    # load_and_convert(output_path, modelname)
+    load_and_convert(output_path, modelname)
 
-    example = (
-        """New Knorr Gourmet Sides offer an exciting range of restaurant-style rice and risotto side dishes. """
-        """These dishes are not only easy to prepare but also start with the best quality real ingredients. """
-        """They bring the excitement that your weekday meals deserve! The Gourmet Sides are available in several varieties, """
-        """including Thai Curry Coconut Rice with Lemongrass, Savory and Sweet Teriyaki Rice with Ginger and Soy Sauce, """
-        """Creamy Mushroom & Parmesan Risotto with Chives, and Creamy Roasted Chicken & Leek Risotto with Aged Parmesan. """
-        """It's important to note that all other Knorr Sides are still available as well."""
-    )
-    onnx_vs_torch(example, output_path, modelname)
+    # example = (
+    #     """New Knorr Gourmet Sides offer an exciting range of restaurant-style rice and risotto side dishes. """
+    #     """These dishes are not only easy to prepare but also start with the best quality real ingredients. """
+    #     """They bring the excitement that your weekday meals deserve! The Gourmet Sides are available in several varieties, """
+    #     """including Thai Curry Coconut Rice with Lemongrass, Savory and Sweet Teriyaki Rice with Ginger and Soy Sauce, """
+    #     """Creamy Mushroom & Parmesan Risotto with Chives, and Creamy Roasted Chicken & Leek Risotto with Aged Parmesan. """
+    #     """It's important to note that all other Knorr Sides are still available as well."""
+    # )
+    # onnx_vs_torch(example, output_path, modelname)
