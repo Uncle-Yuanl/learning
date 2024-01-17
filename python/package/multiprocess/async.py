@@ -265,3 +265,27 @@ async def multi_stack_main():
 # print(f"time cose: {time() - start}")
 
 
+# ========================== gather的两种传参形式 =============================
+# 1、直接在gather函数中，以可变参数*args的形式传入
+# 参考：https://github.com/triton-inference-server/client/blob/main/src/python/examples/simple_http_aio_infer_client.py
+# async def main_sync():
+#     results = await asyncio.gather(
+#         get_api_result(aiohttp.ClientSession(), "abc"),
+#         get_api_result(aiohttp.ClientSession(), "def")
+#     )
+
+# # 2、ensure_future将协程封装成task，可以被轮询
+# results = asyncio.run(multi_stack_main)
+
+# ========================== asyncio.run无法嵌套 =============================
+
+async def main_nested():
+
+    result = await asyncio.run(
+        multi_stack_main()
+    )
+
+    return result
+
+
+result = asyncio.run(main_nested())
