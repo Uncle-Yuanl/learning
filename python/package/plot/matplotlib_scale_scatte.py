@@ -6,7 +6,10 @@ from io import BytesIO
 import streamlit as st
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+import matplotlib.image as mpimg
+import streamlit.components.v1 as components
+import mpld3
 
 # def encode_image(img):
 #     """
@@ -181,15 +184,16 @@ class PanCanvas:
 
 
 # 生成随机数据
-# x = np.linspace(0, 10, 100)
-# y = np.sin(x)
-x = np.random.rand(3)
-y = np.random.rand(3)
+x = np.linspace(0, 10, 3)
+y = np.sin(x)
+# x = np.random.rand(3)
+# y = np.random.rand(3)
+
 
 # 加载一个图片作为标记
 imgs = []
-imgs.append(plt.imread('/home/yhao/code/learning/python/package/plot/markers/D1V1.png'))
-imgs.append(plt.imread('/home/yhao/code/learning/python/package/plot/markers/C1V1.png'))
+imgs.append(mpimg.imread('/home/yhao/code/learning/python/package/plot/markers/D1V1.png'))
+imgs.append(mpimg.imread('/home/yhao/code/learning/python/package/plot/markers/C1V1.png'))
 imgs.append(plt.imread('/home/yhao/code/learning/python/package/plot/markers/C2V1.png'))
 
  
@@ -201,14 +205,57 @@ ax.scatter(x, y)
 
 # 循环绘制散点图,每个点使用图像作为标记
 for i in range(len(x)):
-    im = OffsetImage(imgs[i], zoom=0.05)
-    ab = AnnotationBbox(im, (x[i], y[i]), xycoords='data', frameon=False)
-    ax.add_artist(ab)
+    # im = OffsetImage(imgs[i], zoom=0.05)
+    # ab = AnnotationBbox(im, (x[i], y[i]), xycoords='data', frameon=False)
+    img_base64 = base64.b64encode(imgs[i]).decode('utf-8')
+    img_html = '<img src="data:image/png;base64,{}" width="20" height="20">'.format(img_base64)
+    ax.annotate(img_html, xy=(x[i], y[i]))
+    # ax.add_artist(ab)
 
 # 连接鼠标滚轮事件处理函数
 # fig.canvas.mpl_connect('scroll_event', on_scroll)
     
 # 创建 PanCanvas 对象
-pan_canvas = PanCanvas(ax)
+# pan_canvas = PanCanvas(ax)
 
+# # 创建FigureCanvasAgg对象
+# canvas = FigureCanvasAgg(fig)
+
+# 在Streamlit上渲染静态图像
+# st.pyplot(fig)
 plt.show()
+# fig_html = mpld3.fig_to_html(fig)
+# components.html(fig_html, height=600)
+
+# # 定义JavaScript代码用于处理鼠标事件
+# zoom_js = """
+#     var fig = window.document.getElementsByTagName('canvas')[0];
+#     fig.addEventListener('wheel', function(event) {
+#         if (event.deltaY < 0) {
+#             Streamlit.setComponentValue(event.deltaY)
+#         } else {
+#             Streamlit.setComponentValue(event.deltaY)
+#         }
+#     });
+# """
+
+# # 创建一个文本输入框来接收JavaScript发送的事件
+# zoom_value = st.slider("Zoom", min_value=-100, max_value=100)
+
+# # 根据输入的缩放值更新图像
+# if zoom_value:
+#     scale = 1 + int(zoom_value) / 1000
+#     ax.set_xlim(np.array(ax.get_xlim()) * scale)
+#     ax.set_ylim(np.array(ax.get_ylim()) * scale)
+#     canvas.draw()
+#     st.pyplot(fig)
+
+# # 在Streamlit上注入JavaScript代码
+# st.components.v1.html(
+#     f"""
+#     <script>
+#         {zoom_js}
+#     </script>
+#     """,
+#     height=0,
+# )
