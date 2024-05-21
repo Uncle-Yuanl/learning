@@ -179,8 +179,9 @@ class PanCanvas:
         # 更新坐标轴范围
         self.ax.set_xlim(new_xlim)
         self.ax.set_ylim(new_ylim)
-        # 重新绘制图形
-        fig.canvas.draw_idle()
+        # 重新绘制图形  两种方式差不多
+        # fig.canvas.draw_idle()
+        self.ax.figure.canvas.draw()
 
 
 # 生成随机数据
@@ -205,18 +206,18 @@ ax.scatter(x, y)
 
 # 循环绘制散点图,每个点使用图像作为标记
 for i in range(len(x)):
-    # im = OffsetImage(imgs[i], zoom=0.05)
-    # ab = AnnotationBbox(im, (x[i], y[i]), xycoords='data', frameon=False)
-    img_base64 = base64.b64encode(imgs[i]).decode('utf-8')
-    img_html = '<img src="data:image/png;base64,{}" width="20" height="20">'.format(img_base64)
-    ax.annotate(img_html, xy=(x[i], y[i]))
-    # ax.add_artist(ab)
+    im = OffsetImage(imgs[i], zoom=0.05)
+    ab = AnnotationBbox(im, (x[i], y[i]), xycoords='data', frameon=False)
+    ax.add_artist(ab)
+    # img_base64 = base64.b64encode(imgs[i]).decode('utf-8')
+    # img_html = '<img src="data:image/png;base64,{}" width="20" height="20">'.format(img_base64)
+    # ax.annotate(img_html, xy=(x[i], y[i]))
 
 # 连接鼠标滚轮事件处理函数
 # fig.canvas.mpl_connect('scroll_event', on_scroll)
     
 # 创建 PanCanvas 对象
-# pan_canvas = PanCanvas(ax)
+pan_canvas = PanCanvas(ax)
 
 # # 创建FigureCanvasAgg对象
 # canvas = FigureCanvasAgg(fig)
