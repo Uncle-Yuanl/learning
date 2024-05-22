@@ -39,7 +39,7 @@ df["CTR"] = 100 - df["CTR"]
 
 # 读取marker
 # imgname = "Mock Up Image.png"
-imgname = "mock_compress.png"
+imgname = "mock_compress_w.png"
 marker = curdir.parent / f"markers/{imgname}"
 
 scatter = Scatter()
