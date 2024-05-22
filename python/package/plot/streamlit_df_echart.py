@@ -38,7 +38,9 @@ df["CTR"] = df["CTR"].str.replace('%', '').astype(int)
 df["CTR"] = 100 - df["CTR"]
 
 # 读取marker
-marker = curdir.parent / "markers/Mock Up Image.png"
+# imgname = "Mock Up Image.png"
+imgname = "mock_compress.png"
+marker = curdir.parent / f"markers/{imgname}"
 
 scatter = Scatter()
 scatter.add_xaxis(df["Likes (k)"].tolist())
@@ -142,5 +144,5 @@ if results:
     st.write(results)
 # st_pyecharts(scatter, events=events)
 
-st.dataframe(df)
+# st.dataframe(df)
 # scatter.render("scatter.html")
