@@ -8,6 +8,8 @@ import base64
 import pandas as pd
 from pathlib import Path
 
+
+st.set_page_config(layout='wide')
 curdir = Path(__file__)
 
 
@@ -36,13 +38,18 @@ df = pd.read_excel(
 df = df[df["Brand"] != 0]
 df["CTR"] = df["CTR"].str.replace('%', '').astype(int)
 df["CTR"] = 100 - df["CTR"]
+df = df.sort_values(by="Brand", ascending=False)
 
 # 读取marker
-# imgname = "Mock Up Image.png"
+# imgname = "Mock Up Image.png"  # (1258, 928, 3)
 imgname = "mock_resize.png"
 marker = curdir.parent / f"markers/{imgname}"
 
-scatter = Scatter()
+scatter = Scatter(
+    init_opts=opts.InitOpts(
+        height="1000px"
+    )
+)
 scatter.add_xaxis(df["Likes (k)"].tolist())
 num = len(df)
 for brand, dfgb in df.groupby(by=["Brand"]):
@@ -111,7 +118,12 @@ scatter.set_series_opts(
 )
 
 scatter.set_global_opts(
-    legend_opts=opts.LegendOpts(type_="scroll"),
+    legend_opts=opts.LegendOpts(
+        type_="scroll",
+        pos_left="right",
+        pos_bottom=20,
+        orient="vertical"
+    ),
     xaxis_opts=opts.AxisOpts(type_="value", name="Likes"),
     yaxis_opts=opts.AxisOpts(type_="value", name="CTR"),
     title_opts=opts.TitleOpts(title="Scatter-Tooltip-Zoom"),
@@ -139,7 +151,7 @@ events = {
 # name, value = st_pyecharts(scatter, events=events)
 # st.write(name)
 # st.write(value)
-results = st_pyecharts(scatter, events=events)
+results = st_pyecharts(scatter, events=events, height="600px")
 if results:
     st.write(results)
 # st_pyecharts(scatter, events=events)
