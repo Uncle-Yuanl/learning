@@ -31,19 +31,18 @@ def filter_rows(row):
     
 # 读取数据
 df = pd.read_excel(
-    curdir.parent / "data/Ad_Clean.xlsx",
-    usecols=["Brand", "Likes (k)", "CTR"],
-    nrows=200
+    curdir.parent / "data/Tik Tok Advertisement Review.xlsx",
 )
 df = df[df["Brand"] != 0]
+df = df[df["Image"].str.contains("png")]
 df["CTR"] = df["CTR"].str.replace('%', '').astype(int)
-df["CTR"] = 100 - df["CTR"]
+# df["CTR"] = 100 - df["CTR"]
 df = df.sort_values(by="Brand", ascending=False)
 
 # 读取marker
 # imgname = "Mock Up Image.png"  # (1258, 928, 3)
-imgname = "mock_resize.png"
-marker = curdir.parent / f"markers/{imgname}"
+# imgname = "mock_resize.png"
+# marker = curdir.parent / f"markers/{imgname}"
 
 scatter = Scatter(
     init_opts=opts.InitOpts(
@@ -53,63 +52,63 @@ scatter = Scatter(
 scatter.add_xaxis(df["Likes (k)"].tolist())
 num = len(df)
 for brand, dfgb in df.groupby(by=["Brand"]):
-    brandscatteritems = [
-        ScatterItem(
-            name="https://www.google.com/",
-            value=(row["Likes (k)"], row["CTR"])
-        ) for _, row in dfgb.iterrows()
-    ]
-    scatter.add_yaxis(
-        series_name=brand[0],
-        y_axis=brandscatteritems,
-        # series_name="",
-        # y_axis=dfgb["CTR"].tolist(),
-        symbol=f"image://data:image/png;base64,{get_url(marker)}",
-        symbol_size=60
-    )
+    for _, row in dfgb.iterrows():
+        brandscatteritems = [
+            ScatterItem(
+                name=row["URL"],
+                value=(row["Likes (k)"], row["CTR"])
+            )
+        ]
+        marker = curdir.parent / f"photo/{row['Image']}"
+        scatter.add_yaxis(
+            series_name=brand[0],
+            y_axis=brandscatteritems,
+            symbol=f"image://data:image/png;base64,{get_url(marker)}",
+            symbol_size=60
+        )
 
-# 添加超链接
-urls = ["https://www.google.com/"] * len(df)
-# scatter.add_js_funcs(JsCode(f"window.open('{link}')") for link in enumerate(urls))
-chart_id = scatter.chart_id
+# # 添加超链接
+# urls = ["https://www.google.com/"] * len(df)
+# # scatter.add_js_funcs(JsCode(f"window.open('{link}')") for link in enumerate(urls))
+# chart_id = scatter.chart_id
+# # js_func = f"""
+# #     chart_{chart_id}.on('click', function (params) {{
+# #         window.open({urls[0]}) 
+# #         console.log(params); 
+# #     }});
+# # """
 # js_func = f"""
-#     chart_{chart_id}.on('click', function (params) {{
-#         window.open({urls[0]}) 
-#         console.log(params); 
+#     chart_{chart_id}.on('dblclick', function(params) {{
+#         var opts=option_{chart_id};
+#         if(params.componentType=="series") {{
+#             var seriesIndex=params.seriesIndex;
+#             if (!('markPoint' in opts.series[seriesIndex])) {{
+#                 var markPoint = {{
+#                     label: {{
+#                         show: true,
+#                     }},
+#                     data: []
+#                 }};
+#                 opts.series[seriesIndex].markPoint = markPoint;
+#             }}
+#             var markData={{ name:seriesIndex, coord: params.value, value: params.value[params.value.length-1] }} 
+#             opts.series[seriesIndex].markPoint.data.push(markData);
+#             chart_{chart_id}.setOption(opts);
+#         }} else if(params.componentType=="markPoint") {{
+#             var seriesIndex=params.seriesIndex;
+#             var coord=params.data.coord;
+#             var idxToRemove=opts.series[seriesIndex].markPoint.data.findIndex(function(item) {{
+#                 return item.name == seriesIndex && item.coord[0] === coord[0] && item.coord[1] === coord[1];
+#             }});
+#             if (idxToRemove !== -1) {{
+#                 opts.series[seriesIndex].markPoint.data.splice(idxToRemove, 1);
+#                 chart_{chart_id}.setOption(opts);
+#             }}
+#         }}
 #     }});
 # """
-js_func = f"""
-    chart_{chart_id}.on('dblclick', function(params) {{
-        var opts=option_{chart_id};
-        if(params.componentType=="series") {{
-            var seriesIndex=params.seriesIndex;
-            if (!('markPoint' in opts.series[seriesIndex])) {{
-                var markPoint = {{
-                    label: {{
-                        show: true,
-                    }},
-                    data: []
-                }};
-                opts.series[seriesIndex].markPoint = markPoint;
-            }}
-            var markData={{ name:seriesIndex, coord: params.value, value: params.value[params.value.length-1] }} 
-            opts.series[seriesIndex].markPoint.data.push(markData);
-            chart_{chart_id}.setOption(opts);
-        }} else if(params.componentType=="markPoint") {{
-            var seriesIndex=params.seriesIndex;
-            var coord=params.data.coord;
-            var idxToRemove=opts.series[seriesIndex].markPoint.data.findIndex(function(item) {{
-                return item.name == seriesIndex && item.coord[0] === coord[0] && item.coord[1] === coord[1];
-            }});
-            if (idxToRemove !== -1) {{
-                opts.series[seriesIndex].markPoint.data.splice(idxToRemove, 1);
-                chart_{chart_id}.setOption(opts);
-            }}
-        }}
-    }});
-"""
-js_func = [JsCode(f"window.open('{link}')") for link in urls]
-scatter.add_js_funcs(*js_func)
+# js_func = [JsCode(f"window.open('{link}')") for link in urls]
+# scatter.add_js_funcs(*js_func)
 
 scatter.set_series_opts(
     label_opts=opts.LabelOpts(is_show=False),
@@ -124,9 +123,18 @@ scatter.set_global_opts(
         pos_bottom=20,
         orient="vertical"
     ),
-    xaxis_opts=opts.AxisOpts(type_="value", name="Likes"),
-    yaxis_opts=opts.AxisOpts(type_="value", name="CTR"),
-    title_opts=opts.TitleOpts(title="Scatter-Tooltip-Zoom"),
+    xaxis_opts=opts.AxisOpts(
+        type_="value",
+        name="Likes"
+    ),
+    yaxis_opts=opts.AxisOpts(
+        type_="value",
+        name="CTR",
+        is_inverse=True
+    ),
+    title_opts=opts.TitleOpts(
+        title="Tik Tok Advertisement Review"
+    ),
     datazoom_opts=[
         opts.DataZoomOpts(
             is_show=True,
@@ -156,5 +164,5 @@ if results:
     st.write(results)
 # st_pyecharts(scatter, events=events)
 
-# st.dataframe(df)
+st.dataframe(df)
 # scatter.render("scatter.html")
