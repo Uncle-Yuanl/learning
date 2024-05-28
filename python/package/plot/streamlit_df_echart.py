@@ -36,10 +36,13 @@ df = pd.read_excel(
 df = df[df["Brand"] != 0]
 df = df[df["Image"].str.contains("png")]
 df["CTR"] = df["CTR"].str.replace('%', '').astype(int)
+# df["CTR"] = 100 - df["CTR"]
 df = df.sort_values(by="Brand", ascending=False)
 
-average_x = df["Likes (k)"].mean()
-average_y = df["CTR"].mean()
+# 读取marker
+# imgname = "Mock Up Image.png"  # (1258, 928, 3)
+# imgname = "mock_resize.png"
+# marker = curdir.parent / f"markers/{imgname}"
 
 scatter = Scatter(
     init_opts=opts.InitOpts(
@@ -64,22 +67,53 @@ for brand, dfgb in df.groupby(by=["Brand"]):
             symbol_size=60
         )
 
+# # 添加超链接
+# urls = ["https://www.google.com/"] * len(df)
+# # scatter.add_js_funcs(JsCode(f"window.open('{link}')") for link in enumerate(urls))
+# chart_id = scatter.chart_id
+# # js_func = f"""
+# #     chart_{chart_id}.on('click', function (params) {{
+# #         window.open({urls[0]}) 
+# #         console.log(params); 
+# #     }});
+# # """
+# js_func = f"""
+#     chart_{chart_id}.on('dblclick', function(params) {{
+#         var opts=option_{chart_id};
+#         if(params.componentType=="series") {{
+#             var seriesIndex=params.seriesIndex;
+#             if (!('markPoint' in opts.series[seriesIndex])) {{
+#                 var markPoint = {{
+#                     label: {{
+#                         show: true,
+#                     }},
+#                     data: []
+#                 }};
+#                 opts.series[seriesIndex].markPoint = markPoint;
+#             }}
+#             var markData={{ name:seriesIndex, coord: params.value, value: params.value[params.value.length-1] }} 
+#             opts.series[seriesIndex].markPoint.data.push(markData);
+#             chart_{chart_id}.setOption(opts);
+#         }} else if(params.componentType=="markPoint") {{
+#             var seriesIndex=params.seriesIndex;
+#             var coord=params.data.coord;
+#             var idxToRemove=opts.series[seriesIndex].markPoint.data.findIndex(function(item) {{
+#                 return item.name == seriesIndex && item.coord[0] === coord[0] && item.coord[1] === coord[1];
+#             }});
+#             if (idxToRemove !== -1) {{
+#                 opts.series[seriesIndex].markPoint.data.splice(idxToRemove, 1);
+#                 chart_{chart_id}.setOption(opts);
+#             }}
+#         }}
+#     }});
+# """
+# js_func = [JsCode(f"window.open('{link}')") for link in urls]
+# scatter.add_js_funcs(*js_func)
+
 scatter.set_series_opts(
     label_opts=opts.LabelOpts(is_show=False),
     legend_opts=opts.LegendOpts(is_show=False),
     tooltip_opts=opts.TooltipOpts(is_show=True),
-    markline_opts=opts.MarkLineOpts(
-        data=[
-            opts.MarkLineItem(
-                name="Average of Likes",
-                x=average_x
-            ),
-            opts.MarkLineItem(
-                name="Average of CTR",
-                y=average_y
-            )
-        ]
-    )
 )
 
 scatter.set_global_opts(
@@ -95,9 +129,8 @@ scatter.set_global_opts(
     ),
     yaxis_opts=opts.AxisOpts(
         type_="value",
-        name="CTR Top x% ",
-        is_inverse=True,
-        name_location="start"
+        name="CTR",
+        is_inverse=True
     ),
     title_opts=opts.TitleOpts(
         title="Tik Tok Advertisement Review"
