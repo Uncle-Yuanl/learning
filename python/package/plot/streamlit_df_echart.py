@@ -12,6 +12,19 @@ from pathlib import Path
 st.set_page_config(layout='wide')
 curdir = Path(__file__)
 
+# 创建container
+container = st.container(
+    height=932,
+    border=True
+)
+
+# with container:        
+#     st.video(
+#         data="/home/yhao/code/learning/python/package/plot/video/Video zonder titel ‐ Gemaakt met Clipchamp.mp4",
+#         loop=True,
+#         autoplay=True
+#     )
+
 
 def get_url(localpath):
     with open(localpath, "rb") as img_file:
@@ -20,15 +33,8 @@ def get_url(localpath):
     return encoded_img
 
 
-# 定义过滤函数
-def filter_rows(row):
-    # 如果第三列的值等于'特定值',返回True跳过该行
-    if row[1] == 0:
-        return True
-    # 否则返回False保留该行
-    else:
-        return False
-    
+minio_endpoint = "https://cmiai-innoflex.unilever-china.com/yhaotemp/photo/"
+
 # 读取数据
 df = pd.read_excel(
     curdir.parent / "data/Tik Tok Advertisement Review.xlsx",
@@ -39,130 +45,151 @@ df["CTR"] = df["CTR"].str.replace('%', '').astype(int)
 # df["CTR"] = 100 - df["CTR"]
 df = df.sort_values(by="Brand", ascending=False)
 
-# 读取marker
-# imgname = "Mock Up Image.png"  # (1258, 928, 3)
-# imgname = "mock_resize.png"
-# marker = curdir.parent / f"markers/{imgname}"
+average_x = df["Likes (k)"].mean()
+average_y = df["CTR"].mean()
 
-scatter = Scatter(
-    init_opts=opts.InitOpts(
-        height="1000px"
-    )
-)
-scatter.add_xaxis(df["Likes (k)"].tolist())
-num = len(df)
-for brand, dfgb in df.groupby(by=["Brand"]):
-    for _, row in dfgb.iterrows():
-        brandscatteritems = [
-            ScatterItem(
-                name=row["URL"],
-                value=(row["Likes (k)"], row["CTR"])
-            )
-        ]
-        marker = curdir.parent / f"photo/{row['Image']}"
-        scatter.add_yaxis(
-            series_name=brand[0],
-            y_axis=brandscatteritems,
-            symbol=f"image://data:image/png;base64,{get_url(marker)}",
-            symbol_size=60
-        )
 
-# # 添加超链接
-# urls = ["https://www.google.com/"] * len(df)
-# # scatter.add_js_funcs(JsCode(f"window.open('{link}')") for link in enumerate(urls))
-# chart_id = scatter.chart_id
-# # js_func = f"""
-# #     chart_{chart_id}.on('click', function (params) {{
-# #         window.open({urls[0]}) 
-# #         console.log(params); 
-# #     }});
-# # """
-# js_func = f"""
-#     chart_{chart_id}.on('dblclick', function(params) {{
-#         var opts=option_{chart_id};
-#         if(params.componentType=="series") {{
-#             var seriesIndex=params.seriesIndex;
-#             if (!('markPoint' in opts.series[seriesIndex])) {{
-#                 var markPoint = {{
-#                     label: {{
-#                         show: true,
-#                     }},
-#                     data: []
-#                 }};
-#                 opts.series[seriesIndex].markPoint = markPoint;
-#             }}
-#             var markData={{ name:seriesIndex, coord: params.value, value: params.value[params.value.length-1] }} 
-#             opts.series[seriesIndex].markPoint.data.push(markData);
-#             chart_{chart_id}.setOption(opts);
-#         }} else if(params.componentType=="markPoint") {{
-#             var seriesIndex=params.seriesIndex;
-#             var coord=params.data.coord;
-#             var idxToRemove=opts.series[seriesIndex].markPoint.data.findIndex(function(item) {{
-#                 return item.name == seriesIndex && item.coord[0] === coord[0] && item.coord[1] === coord[1];
-#             }});
-#             if (idxToRemove !== -1) {{
-#                 opts.series[seriesIndex].markPoint.data.splice(idxToRemove, 1);
-#                 chart_{chart_id}.setOption(opts);
-#             }}
-#         }}
-#     }});
-# """
-# js_func = [JsCode(f"window.open('{link}')") for link in urls]
-# scatter.add_js_funcs(*js_func)
-
-scatter.set_series_opts(
-    label_opts=opts.LabelOpts(is_show=False),
-    legend_opts=opts.LegendOpts(is_show=False),
-    tooltip_opts=opts.TooltipOpts(is_show=True),
-)
-
-scatter.set_global_opts(
-    legend_opts=opts.LegendOpts(
-        type_="scroll",
-        pos_left="right",
-        pos_bottom=20,
-        orient="vertical"
-    ),
-    xaxis_opts=opts.AxisOpts(
-        type_="value",
-        name="Likes"
-    ),
-    yaxis_opts=opts.AxisOpts(
-        type_="value",
-        name="CTR",
-        is_inverse=True
-    ),
-    title_opts=opts.TitleOpts(
-        title="Tik Tok Advertisement Review"
-    ),
-    datazoom_opts=[
-        opts.DataZoomOpts(
-            is_show=True,
-            type_="inside",
-            range_start=0,
-            range_end=100,
+with container:
+    scatter = Scatter(
+        init_opts=opts.InitOpts(
+            height="1000px",
+            bg_color="rgba(0,0,0,0)"
         ),
-        opts.DataZoomOpts(
-            is_show=True,
-            type_="inside",
-            range_start=0,
-            range_end=100,
-            orient="vertical"
+        render_opts=opts.RenderOpts(
+            is_embed_js=True
         )
-    ],
-)
+    )
+    scatter.add_xaxis(df["Likes (k)"].tolist())
+    num = len(df)
+    for brand, dfgb in df.groupby(by=["Brand"]):
+        for _, row in dfgb.iterrows():
+            brandscatteritems = [
+                ScatterItem(
+                    name=row["URL"],
+                    value=(row["Likes (k)"], row["CTR"])
+                )
+            ]
+            scatter.add_yaxis(
+                series_name=brand[0],
+                y_axis=brandscatteritems,
+                symbol=f"image://{minio_endpoint}{row['Image']}",
+                symbol_size=240
+            )
 
-events = {
-    "click": "function(params) { console.log(params); return [params.name, params.value] }",
-    "dblclick": "function(params) { window.open(params.name); return [params.name, params.value] }"
-}
-# name, value = st_pyecharts(scatter, events=events)
-# st.write(name)
-# st.write(value)
-results = st_pyecharts(scatter, events=events, height="600px")
+    scatter.set_series_opts(
+        label_opts=opts.LabelOpts(is_show=False),
+        legend_opts=opts.LegendOpts(is_show=False),
+        tooltip_opts=opts.TooltipOpts(is_show=True),
+        markline_opts=opts.MarkLineOpts(
+            data=[
+                opts.MarkLineItem(
+                    name="Average of Likes",
+                    x=average_x
+                ),
+                opts.MarkLineItem(
+                    name="Average of CTR",
+                    y=average_y
+                )
+            ]
+        )
+    )
+
+    scatter.set_global_opts(
+        legend_opts=opts.LegendOpts(
+            type_="scroll",
+            pos_left="right",
+            pos_bottom=20,
+            orient="vertical"
+        ),
+        xaxis_opts=opts.AxisOpts(
+            type_="value",
+            name="Likes"
+        ),
+        yaxis_opts=opts.AxisOpts(
+            type_="value",
+            name="CTR Top x% ",
+            is_inverse=True,
+            name_location="start"
+        ),
+        title_opts=opts.TitleOpts(
+            title="Tik Tok Advertisement Review"
+        ),
+        datazoom_opts=[
+            opts.DataZoomOpts(
+                is_show=True,
+                type_="inside",
+                range_start=0,
+                range_end=100,
+            ),
+            opts.DataZoomOpts(
+                is_show=True,
+                type_="inside",
+                range_start=0,
+                range_end=100,
+                orient="vertical"
+            )
+        ],
+        # graphic_opts=[
+        #     opts.GraphicImage(
+        #         graphic_item=opts.GraphicItem(
+        #             id_="logo", right=0, top=0, z=-10, bounding="raw", origin=[75, 75]
+        #         ),
+        #         graphic_imagestyle_opts=opts.GraphicImageStyleOpts(
+        #             image="https://echarts.apache.org/zh/images/favicon.png",
+        #             width=2309,
+        #             height=600,
+        #             opacity=0.4,
+        #         ),
+        #     )
+        # ],
+    )
+
+    events = {
+        "click": "function(params) { console.log(params); return [params.name, params.value] }",
+        "dblclick": "function(params) { window.open(params.name); return [params.name, params.value] }"
+    }
+    # name, value = st_pyecharts(scatter, events=events)
+    # st.write(name)
+    # st.write(value)
+    results = st_pyecharts(scatter, events=events, height="932px")
+
+# 调整chart position在container中的绝对位置
+with container:
+
+    # 调整video透明度
+    video_html = """
+        <style>
+
+        .stVideo {
+            # position: fixed;
+            # right: 40%;
+            # top: 100px;
+            # width=1000px;
+            # height=600px;
+            opacity: 0.8;
+        }
+
+        </style>	
+
+    """
+    
+    chart_html = """
+        <style>
+
+        iframe {
+            position: absolute;
+            right: 0px;
+            top: -932px;
+        }
+
+        </style>
+
+        <video src="url"  muted  autoplay ></video>
+
+    """
+    # st.markdown(video_html, unsafe_allow_html=True)
+    # st.markdown(chart_html, unsafe_allow_html=True)
+
 if results:
     st.write(results)
-# st_pyecharts(scatter, events=events)
-
 st.dataframe(df)
-# scatter.render("scatter.html")
