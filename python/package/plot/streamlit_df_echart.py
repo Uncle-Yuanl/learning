@@ -60,14 +60,24 @@ with container:
             brandscatteritems = [
                 ScatterItem(
                     name=row["URL"],
-                    value=(row["Likes (k)"], row["CTR"])
+                    value=(row["Likes (k)"], row["CTR"]),
+                    tooltip_opts=opts.TooltipOpts(
+                        formatter=JsCode((
+                            "function(params) {"
+                                "var value = params.value;"
+                                "var x = value[0];"
+                                "var y = value[1];"
+                                "return 'Likes (k): ' + x + '<br>CTR Top: ' + y + '%';"
+                            "}"
+                        ))
+                    )
                 )
             ]
             scatter.add_yaxis(
                 series_name=brand[0],
                 y_axis=brandscatteritems,
                 symbol=f"image://{minio_endpoint}{row['Image']}",
-                symbol_size=240
+                symbol_size=120
             )
 
     scatter.set_series_opts(
@@ -90,6 +100,7 @@ with container:
 
     scatter.set_global_opts(
         legend_opts=opts.LegendOpts(
+            is_show=False,
             type_="scroll",
             pos_left="right",
             pos_bottom=20,
@@ -97,13 +108,37 @@ with container:
         ),
         xaxis_opts=opts.AxisOpts(
             type_="value",
-            name="Likes"
+            name="Likes (k)",
+            is_scale=True,
+            name_location="end",
+            position="bottom",
+            axisline_opts=opts.AxisLineOpts(
+                is_on_zero=False,
+                symbol=['none', 'arrow']
+            ),
+            axislabel_opts=opts.LabelOpts(
+                font_size=20
+            ),
+            name_textstyle_opts=opts.TextStyleOpts(
+                font_weight="bold",
+                font_size=20
+            )
         ),
         yaxis_opts=opts.AxisOpts(
             type_="value",
             name="CTR Top x% ",
             is_inverse=True,
-            name_location="start"
+            name_location="start",
+            axisline_opts=opts.AxisLineOpts(
+                symbol=['none', 'arrow']
+            ),
+            axislabel_opts=opts.LabelOpts(
+                font_size=20
+            ),
+            name_textstyle_opts=opts.TextStyleOpts(
+                font_weight="bold",
+                font_size=20
+            )
         ),
         title_opts=opts.TitleOpts(
             title="Tik Tok Advertisement Review"
@@ -123,19 +158,6 @@ with container:
                 orient="vertical"
             )
         ],
-        # graphic_opts=[
-        #     opts.GraphicImage(
-        #         graphic_item=opts.GraphicItem(
-        #             id_="logo", right=0, top=0, z=-10, bounding="raw", origin=[75, 75]
-        #         ),
-        #         graphic_imagestyle_opts=opts.GraphicImageStyleOpts(
-        #             image="https://echarts.apache.org/zh/images/favicon.png",
-        #             width=2309,
-        #             height=600,
-        #             opacity=0.4,
-        #         ),
-        #     )
-        # ],
     )
 
     events = {
@@ -150,19 +172,20 @@ with container:
     # 调整video透明度
     video_html = """
         <style>
-        
+
         video {
             position: relative;
             left: 10%;
             top: 30px;
             width: 80%;
             height: 670px;
-            opacity: 0.8;
+            opacity: 0.6;
+            filter: brightness(0.6);
             object-fit: none;
             z-index: 1;
         }
 
-        </style>
+        </style> 
 
         <video loop muted autoplay>
             <source src="https://cmiai-innoflex.unilever-china.com/yhaotemp/photo/tiktok_video.mp4" type="video/mp4" >
@@ -185,8 +208,3 @@ with container:
     """
     st.markdown(chart_html, unsafe_allow_html=True)
     st.markdown(video_html, unsafe_allow_html=True)
-    
-
-if results:
-    st.write(results)
-st.dataframe(df)
