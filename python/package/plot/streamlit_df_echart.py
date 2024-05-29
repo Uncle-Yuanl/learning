@@ -11,19 +11,15 @@ from pathlib import Path
 
 st.set_page_config(layout='wide')
 curdir = Path(__file__)
+minio_endpoint = "https://cmiai-innoflex.unilever-china.com/yhaotemp/photo/"
+HEIGHT = 800
+
 
 # 创建container
 container = st.container(
-    height=932,
+    height=HEIGHT,
     border=True
 )
-
-# with container:        
-#     st.video(
-#         data="/home/yhao/code/learning/python/package/plot/video/Video zonder titel ‐ Gemaakt met Clipchamp.mp4",
-#         loop=True,
-#         autoplay=True
-#     )
 
 
 def get_url(localpath):
@@ -32,8 +28,6 @@ def get_url(localpath):
 
     return encoded_img
 
-
-minio_endpoint = "https://cmiai-innoflex.unilever-china.com/yhaotemp/photo/"
 
 # 读取数据
 df = pd.read_excel(
@@ -52,7 +46,7 @@ average_y = df["CTR"].mean()
 with container:
     scatter = Scatter(
         init_opts=opts.InitOpts(
-            height="1000px",
+            height=f"{HEIGHT}px",
             bg_color="rgba(0,0,0,0)"
         ),
         render_opts=opts.RenderOpts(
@@ -148,10 +142,7 @@ with container:
         "click": "function(params) { console.log(params); return [params.name, params.value] }",
         "dblclick": "function(params) { window.open(params.name); return [params.name, params.value] }"
     }
-    # name, value = st_pyecharts(scatter, events=events)
-    # st.write(name)
-    # st.write(value)
-    results = st_pyecharts(scatter, events=events, height="932px")
+    results = st_pyecharts(scatter, events=events, height=f"{HEIGHT}px")
 
 # 调整chart position在container中的绝对位置
 with container:
@@ -159,17 +150,23 @@ with container:
     # 调整video透明度
     video_html = """
         <style>
-
-        .stVideo {
-            # position: fixed;
-            # right: 40%;
-            # top: 100px;
-            # width=1000px;
-            # height=600px;
+        
+        video {
+            position: relative;
+            left: 10%;
+            top: 30px;
+            width: 80%;
+            height: 670px;
             opacity: 0.8;
+            object-fit: none;
+            z-index: 1;
         }
 
-        </style>	
+        </style>
+
+        <video loop muted autoplay>
+            <source src="https://cmiai-innoflex.unilever-china.com/yhaotemp/photo/tiktok_video.mp4" type="video/mp4" >
+        </video>
 
     """
     
@@ -179,16 +176,16 @@ with container:
         iframe {
             position: absolute;
             right: 0px;
-            top: -932px;
+            top: 0px;
+            z-index: 2;
         }
 
         </style>
 
-        <video src="url"  muted  autoplay ></video>
-
     """
-    # st.markdown(video_html, unsafe_allow_html=True)
-    # st.markdown(chart_html, unsafe_allow_html=True)
+    st.markdown(chart_html, unsafe_allow_html=True)
+    st.markdown(video_html, unsafe_allow_html=True)
+    
 
 if results:
     st.write(results)
