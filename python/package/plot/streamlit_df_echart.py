@@ -4,6 +4,7 @@ from pyecharts import options as opts
 from pyecharts.charts import Scatter
 from pyecharts.options import ScatterItem
 from pyecharts.commons.utils import JsCode
+from streamlit_extras.stylable_container import stylable_container
 import base64
 import pandas as pd
 from pathlib import Path
@@ -12,14 +13,13 @@ from pathlib import Path
 st.set_page_config(layout='wide')
 curdir = Path(__file__)
 minio_endpoint = "https://cmiai-innoflex.unilever-china.com/yhaotemp/photo/"
-HEIGHT = 800
+HEIGHT = 600
+OPACITY = 0.9
 
+# st.write("Tik Tok Advertisement Review")
+st.markdown("<h1 style='text-align: center; color: black;'>Tik Tok Advertisement Review</h1>", unsafe_allow_html=True)
 
-# 创建container
-container = st.container(
-    height=HEIGHT,
-    border=True
-)
+choosebox, chart = st.columns([0.1, 0.9])
 
 
 def get_url(localpath):
@@ -43,11 +43,30 @@ average_x = df["Likes (k)"].mean()
 average_y = df["CTR"].mean()
 
 
-with container:
+with choosebox:
+    with stylable_container(
+        key="background_color_checkbox",
+        css_styles=f"""
+            {{
+                background-color: rgba(255,255,255,{OPACITY});
+            }}
+        """
+    ):
+        with st.expander("Group 1"):
+            st.write("data")
+
+        with st.expander("Group 2"):
+            st.write("data")
+
+        with st.expander("Group ..."):
+            st.write("data")
+
+with chart:
     scatter = Scatter(
         init_opts=opts.InitOpts(
+            width="400px",
             height=f"{HEIGHT}px",
-            bg_color="rgba(255,255,255,0.3)"
+            bg_color=f"rgba(255,255,255,{OPACITY})"
         ),
         render_opts=opts.RenderOpts(
             is_embed_js=True
@@ -128,7 +147,8 @@ with container:
             ),
             name_textstyle_opts=opts.TextStyleOpts(
                 font_weight="bold",
-                font_size=20
+                font_size=20,
+                background_color="black"
             )
         ),
         yaxis_opts=opts.AxisOpts(
@@ -145,17 +165,18 @@ with container:
             ),
             name_textstyle_opts=opts.TextStyleOpts(
                 font_weight="bold",
-                font_size=20
+                font_size=20,
+                background_color="black"
             )
         ),
-        title_opts=opts.TitleOpts(
-            title="Tik Tok Advertisement Review",
-            pos_left="center",
-            title_textstyle_opts=opts.TextStyleOpts(
-                font_weight="bold",
-                font_size=50
-            )
-        ),
+        # title_opts=opts.TitleOpts(
+        #     title="Tik Tok Advertisement Review",
+        #     pos_left="center",
+        #     title_textstyle_opts=opts.TextStyleOpts(
+        #         font_weight="bold",
+        #         font_size=50
+        #     )
+        # ),
         datazoom_opts=[
             opts.DataZoomOpts(
                 is_show=True,
@@ -174,15 +195,17 @@ with container:
     )
 
     events = {
-        "click": "function(params) { console.log(params); return [params.name, params.value] }",
+        # "click": "function(params) { console.log(params); return [params.name, params.value] }",
+        "click": "function(params) { window.open(params.name); return [params.name, params.value] }"
         # "dblclick": "function(params) { window.open(params.name); return [params.name, params.value] }"
         # "dblclick": "function(params) { var newWnd = window.open(); newWnd.opener = null; newWnd.location = params.name; return [params.name, params.value] }"
-        "dblclick": "function(params) { setTimeout(() => window.open(params.name, '_blank')); return [params.name, params.value] }"
+        # "dblclick": "function(params) { setTimeout(() => window.open(params.name, '_blank')); return [params.name, params.value] }",
+        # "touch": "function(params) { console.log(params.name); return [params.name, params.value] }"
     }
     results = st_pyecharts(scatter, events=events, height=f"{HEIGHT}px")
 
 # 调整chart position在container中的绝对位置
-with container:
+# with container:
 
     # 调整video透明度
     # video_html = """
@@ -208,29 +231,30 @@ with container:
 
     # """
 
-    background_image = """
-        <style>
-        [data-testid="stAppViewContainer"] > .main {
-            background-image: url("https://cmiai-innoflex.unilever-china.com/yhaotemp/photo/page_background.jpg");
-            background-size: 100vw 100vh;  # This sets the size to cover 100% of the viewport width and height
-            background-position: center;  
-            background-repeat: no-repeat;
-        }
-        </style>
-    """
-    
-    chart_html = """
-        <style>
+background_image = """
+    <style>
+    [data-testid="stAppViewContainer"] > .main {
+        background-image: url("https://cmiai-innoflex.unilever-china.com/yhaotemp/photo/page_background.jpg");
+        background-size: 100vw 100vh;  # This sets the size to cover 100% of the viewport width and height
+        background-position: center;  
+        background-repeat: no-repeat;
+    }
+    </style>
+"""
 
-        iframe {
-            position: absolute;
-            right: 0px;
-            top: 0px;
-            z-index: 2;
-        }
+chart_html = """
+    <style>
 
-        </style>
+    iframe {
+        position: absolute;
+        right: 0px;
+        top: 0px;
+        z-index: 2;
+    }
 
-    """
-    st.markdown(chart_html, unsafe_allow_html=True)
-    st.markdown(background_image, unsafe_allow_html=True)
+    </style>
+
+"""
+
+st.markdown(chart_html, unsafe_allow_html=True)
+st.markdown(background_image, unsafe_allow_html=True)
