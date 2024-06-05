@@ -47,7 +47,7 @@ with container:
     scatter = Scatter(
         init_opts=opts.InitOpts(
             height=f"{HEIGHT}px",
-            bg_color="rgba(0,0,0,0)"
+            bg_color="rgba(255,255,255,0.3)"
         ),
         render_opts=opts.RenderOpts(
             is_embed_js=True
@@ -88,11 +88,17 @@ with container:
             data=[
                 opts.MarkLineItem(
                     name="Average of Likes",
-                    x=average_x
+                    x=average_x,
+                    linestyle_opts=opts.LineStyleOpts(
+                        width=8
+                    )
                 ),
                 opts.MarkLineItem(
                     name="Average of CTR",
-                    y=average_y
+                    y=average_y,
+                    linestyle_opts=opts.LineStyleOpts(
+                        width=8
+                    )
                 )
             ]
         )
@@ -108,9 +114,10 @@ with container:
         ),
         xaxis_opts=opts.AxisOpts(
             type_="value",
-            name="Likes (k)",
+            name="Number of Likes (k)",
             is_scale=True,
-            name_location="end",
+            name_location="center",
+            name_gap=30,
             position="bottom",
             axisline_opts=opts.AxisLineOpts(
                 is_on_zero=False,
@@ -128,7 +135,8 @@ with container:
             type_="value",
             name="CTR Top x% ",
             is_inverse=True,
-            name_location="start",
+            name_location="center",
+            name_gap=60,
             axisline_opts=opts.AxisLineOpts(
                 symbol=['none', 'arrow']
             ),
@@ -141,7 +149,12 @@ with container:
             )
         ),
         title_opts=opts.TitleOpts(
-            title="Tik Tok Advertisement Review"
+            title="Tik Tok Advertisement Review",
+            pos_left="center",
+            title_textstyle_opts=opts.TextStyleOpts(
+                font_weight="bold",
+                font_size=50
+            )
         ),
         datazoom_opts=[
             opts.DataZoomOpts(
@@ -172,27 +185,38 @@ with container:
 with container:
 
     # 调整video透明度
-    video_html = """
+    # video_html = """
+    #     <style>
+
+    #     video {
+    #         position: relative;
+    #         left: 10%;
+    #         top: 30px;
+    #         width: 80%;
+    #         height: 670px;
+    #         opacity: 0.6;
+    #         filter: brightness(0.6);
+    #         object-fit: none;
+    #         z-index: 1;
+    #     }
+
+    #     </style> 
+
+    #     <video loop muted autoplay>
+    #         <source src="https://cmiai-innoflex.unilever-china.com/yhaotemp/photo/tiktok_video.mp4" type="video/mp4" >
+    #     </video>
+
+    # """
+
+    background_image = """
         <style>
-
-        video {
-            position: relative;
-            left: 10%;
-            top: 30px;
-            width: 80%;
-            height: 670px;
-            opacity: 0.6;
-            filter: brightness(0.6);
-            object-fit: none;
-            z-index: 1;
+        [data-testid="stAppViewContainer"] > .main {
+            background-image: url("https://cmiai-innoflex.unilever-china.com/yhaotemp/photo/page_background.jpg");
+            background-size: 100vw 100vh;  # This sets the size to cover 100% of the viewport width and height
+            background-position: center;  
+            background-repeat: no-repeat;
         }
-
-        </style> 
-
-        <video loop muted autoplay>
-            <source src="https://cmiai-innoflex.unilever-china.com/yhaotemp/photo/tiktok_video.mp4" type="video/mp4" >
-        </video>
-
+        </style>
     """
     
     chart_html = """
@@ -209,4 +233,4 @@ with container:
 
     """
     st.markdown(chart_html, unsafe_allow_html=True)
-    st.markdown(video_html, unsafe_allow_html=True)
+    st.markdown(background_image, unsafe_allow_html=True)
