@@ -162,8 +162,9 @@ with container:
 
     events = {
         "click": "function(params) { console.log(params); return [params.name, params.value] }",
-        "dblclick": "function(params) { var newWnd = window.open(); newWnd.opener = null; newWnd.location = params.name; return [params.name, params.value] }"
         # "dblclick": "function(params) { window.open(params.name); return [params.name, params.value] }"
+        # "dblclick": "function(params) { var newWnd = window.open(); newWnd.opener = null; newWnd.location = params.name; return [params.name, params.value] }"
+        "dblclick": "function(params) { setTimeout(() => window.open(params.name, '_blank')); return [params.name, params.value] }"
     }
     results = st_pyecharts(scatter, events=events, height=f"{HEIGHT}px")
 
