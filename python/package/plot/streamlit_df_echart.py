@@ -13,13 +13,13 @@ from pathlib import Path
 st.set_page_config(layout='wide')
 curdir = Path(__file__)
 minio_endpoint = "https://cmiai-innoflex.unilever-china.com/yhaotemp/photo/"
-HEIGHT = 600
+WIDTH = 1000
+HEIGHT = 500
 OPACITY = 0.9
+MARKERSIZE=40
 
-# st.write("Tik Tok Advertisement Review")
-st.markdown("<h1 style='text-align: center; color: black;'>Tik Tok Advertisement Review</h1>", unsafe_allow_html=True)
-
-choosebox, chart = st.columns([0.1, 0.9])
+DEFAULT_CATE = "Dressing"
+DEFAULT_BRAND = "Hellmann's"
 
 
 def get_url(localpath):
@@ -28,22 +28,50 @@ def get_url(localpath):
 
     return encoded_img
 
+@st.cache_data
+def read_data():
+    df = pd.read_excel(
+        curdir.parent / "data/Tik Tok Advertisement Review_Clean list _Update 1.xlsx"
+    )
+    df = df[df["Brand"] != 0]
+    df["Brand"] = df["Brand"].apply(lambda x: str(x).strip())
+    df["Filter by Brand"] = df["Filter by Brand"].apply(lambda x: str(x).strip())
+    df = df[df["Image"].str.contains("png|jpg")]
+    df["CTR"] = df["CTR"].str.replace('%', '').astype(int)
 
-# 读取数据
-df = pd.read_excel(
-    curdir.parent / "data/Tik Tok Advertisement Review.xlsx",
-)
-df = df[df["Brand"] != 0]
-df = df[df["Image"].str.contains("png")]
-df["CTR"] = df["CTR"].str.replace('%', '').astype(int)
-# df["CTR"] = 100 - df["CTR"]
-df = df.sort_values(by="Brand", ascending=False)
-
-average_x = df["Likes (k)"].mean()
-average_y = df["CTR"].mean()
+    return df
 
 
+df = read_data()
+average_x, max_x = df["Likes (k)"].mean(), df["Likes (k)"].max()
+average_y, max_y = df["CTR"].mean(), df["CTR"].max()
+
+st.markdown("<h1 style='text-align: center; color: black;'>Tik Tok Advertisement Review</h1>", unsafe_allow_html=True)
+
+lb, choosebox, yaxis, chart, rb = st.columns([0.02, 0.18, 0.07, 0.73, 0.1])
 with choosebox:
+    # Filter header
+    filter_html = """
+        <!DOCTYPE html>
+        <html>
+        <style>
+            .custom-filter-header {
+                position: relative;
+                left: 35%;
+                width: 80px;
+                font-size: 18px;
+                font-weight: bold;
+                color: white;
+                background-color: black;
+            }
+        </style>
+        <body>
+            <p class="custom-filter-header">&emsp;Filter</p>
+        </body>
+        </html>
+    """
+    st.markdown(filter_html, unsafe_allow_html=True)
+
     with stylable_container(
         key="background_color_checkbox",
         css_styles=f"""
@@ -52,19 +80,38 @@ with choosebox:
             }}
         """
     ):
-        with st.expander("Group 1"):
-            st.write("data")
-
-        with st.expander("Group 2"):
-            st.write("data")
-
-        with st.expander("Group ..."):
-            st.write("data")
+        st.markdown(
+            '''
+            <style>
+            .stMarkdownContainer {
+                background-color: white;
+                color: green; # Adjust this for expander header color
+            }
+            </style>
+            ''',
+            unsafe_allow_html=True
+        )
+        with st.expander("# Filter by Category", expanded=True):
+            cateset = df["Filter by Category"].unique().tolist()
+            cate_check: list[bool] = [
+                st.checkbox(label=cate) if cate != DEFAULT_CATE else st.checkbox(label=cate, value=True) for cate in cateset
+            ]
+            
+        with st.expander("Filter by Brand", expanded=True):
+            cate_chosen = [cate for cate, check in zip(cateset, cate_check) if check]
+            brandset = df[df["Filter by Category"].isin(cate_chosen)]["Filter by Brand"].unique().tolist()
+            if len(brandset) == 0:
+                st.write("")
+            brand_check = [
+                # st.checkbox(label=brand) if brand != DEFAULT_BRAND else st.checkbox(label=brand, value=True) for brand in brandset
+                st.checkbox(label=brand, value=True) for brand in brandset
+            ]
+            brand_chosen = [brand for brand, check in zip(brandset, brand_check) if check]
 
 with chart:
     scatter = Scatter(
         init_opts=opts.InitOpts(
-            width="400px",
+            # width="400px",
             height=f"{HEIGHT}px",
             bg_color=f"rgba(255,255,255,{OPACITY})"
         ),
@@ -74,35 +121,37 @@ with chart:
     )
     scatter.add_xaxis(df["Likes (k)"].tolist())
     num = len(df)
-    for brand, dfgb in df.groupby(by=["Brand"]):
-        for _, row in dfgb.iterrows():
-            brandscatteritems = [
-                ScatterItem(
-                    name=row["URL"],
-                    value=(row["Likes (k)"], row["CTR"]),
-                    tooltip_opts=opts.TooltipOpts(
-                        formatter=JsCode((
-                            "function(params) {"
-                                "var value = params.value;"
-                                "var x = value[0];"
-                                "var y = value[1];"
-                                "return 'Likes (k): ' + x + '<br>CTR Top: ' + y + '%';"
-                            "}"
-                        ))
+    for brand, dfgb in df.groupby(by=["Filter by Brand"]):
+        if brand[0] in brand_chosen:
+            for _, row in dfgb.iterrows():
+                brandscatteritems = [
+                    ScatterItem(
+                        name=row["URL"],
+                        value=(row["Likes (k)"], row["CTR"]),
+                        tooltip_opts=opts.TooltipOpts(
+                            formatter=JsCode((
+                                "function(params) {"
+                                    "var value = params.value;"
+                                    "var x = value[0];"
+                                    "var y = value[1];"
+                                    "return 'Likes (k): ' + x + '<br>CTR Top: ' + y + '%';"
+                                "}"
+                            ))
+                        )
                     )
+                ]
+                scatter.add_yaxis(
+                    series_name=row["Brand"],
+                    y_axis=brandscatteritems,
+                    symbol=f"image://{minio_endpoint}{row['Image']}",
+                    symbol_size=MARKERSIZE
                 )
-            ]
-            scatter.add_yaxis(
-                series_name=brand[0],
-                y_axis=brandscatteritems,
-                symbol=f"image://{minio_endpoint}{row['Image']}",
-                symbol_size=120
-            )
 
     scatter.set_series_opts(
         label_opts=opts.LabelOpts(is_show=False),
         legend_opts=opts.LegendOpts(is_show=False),
         tooltip_opts=opts.TooltipOpts(is_show=True),
+        # TODO average of chosen brands
         markline_opts=opts.MarkLineOpts(
             data=[
                 opts.MarkLineItem(
@@ -119,7 +168,10 @@ with chart:
                         width=8
                     )
                 )
-            ]
+            ],
+            linestyle_opts=opts.LineStyleOpts(
+                color="#00FF7F"
+            )
         )
     )
 
@@ -133,11 +185,10 @@ with chart:
         ),
         xaxis_opts=opts.AxisOpts(
             type_="value",
-            name="Number of Likes (k)",
             is_scale=True,
-            name_location="center",
-            name_gap=30,
             position="bottom",
+            min_=0,
+            max_=max_x,
             axisline_opts=opts.AxisLineOpts(
                 is_on_zero=False,
                 symbol=['none', 'arrow']
@@ -153,10 +204,9 @@ with chart:
         ),
         yaxis_opts=opts.AxisOpts(
             type_="value",
-            name="CTR Top x% ",
             is_inverse=True,
-            name_location="center",
-            name_gap=60,
+            min_=0,
+            max_=max_y,
             axisline_opts=opts.AxisLineOpts(
                 symbol=['none', 'arrow']
             ),
@@ -169,14 +219,6 @@ with chart:
                 background_color="black"
             )
         ),
-        # title_opts=opts.TitleOpts(
-        #     title="Tik Tok Advertisement Review",
-        #     pos_left="center",
-        #     title_textstyle_opts=opts.TextStyleOpts(
-        #         font_weight="bold",
-        #         font_size=50
-        #     )
-        # ),
         datazoom_opts=[
             opts.DataZoomOpts(
                 is_show=True,
@@ -202,8 +244,55 @@ with chart:
         # "dblclick": "function(params) { setTimeout(() => window.open(params.name, '_blank')); return [params.name, params.value] }",
         # "touch": "function(params) { console.log(params.name); return [params.name, params.value] }"
     }
-    results = st_pyecharts(scatter, events=events, height=f"{HEIGHT}px")
 
+    results = st_pyecharts(scatter, events=events, width=f"{WIDTH}px", height=f"{HEIGHT}px")
+
+    # X axis
+    xaxis_html = """
+        <!DOCTYPE html>
+        <html>
+        <style>
+            .custom-xaxis {
+                position: relative;
+                left: 38%;
+                width: 190px;
+                font-size: 18px;
+                font-weight: bold;
+                color: white;
+                background-color: black;
+            }
+        </style>
+        <body>
+            <p class="custom-xaxis">&emsp;Number of Likes (k)</p>
+        </body>
+        </html>
+    """
+    st.markdown(xaxis_html, unsafe_allow_html=True)
+
+# Y axis
+with yaxis:
+    yaxis_html = """
+        <!DOCTYPE html>
+        <html>
+        <style>
+            .custom-yaxis {
+                position: absolute;
+                top: 250px;
+                left: -12px;
+                width: 115px;
+                font-size: 18px;
+                font-weight: bold;
+                color: white;
+                background-color: black;
+            }
+        </style>
+        <body>
+            <p class="custom-yaxis">&ensp;CTR Top x%</p>
+        </body>
+        </html>
+    """
+    st.markdown(yaxis_html, unsafe_allow_html=True)
+    pass   
 # 调整chart position在container中的绝对位置
 # with container:
 
@@ -242,19 +331,19 @@ background_image = """
     </style>
 """
 
-chart_html = """
-    <style>
+# chart_html = """
+#     <style>
 
-    iframe {
-        position: absolute;
-        right: 0px;
-        top: 0px;
-        z-index: 2;
-    }
+#     iframe {
+#         position: absolute;
+#         right: 0px;
+#         top: 0px;
+#         z-index: 2;
+#     }
 
-    </style>
+#     </style>
 
-"""
+# """
 
-st.markdown(chart_html, unsafe_allow_html=True)
+# st.markdown(chart_html, unsafe_allow_html=True)
 st.markdown(background_image, unsafe_allow_html=True)
