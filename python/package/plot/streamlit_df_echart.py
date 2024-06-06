@@ -41,10 +41,18 @@ def read_data():
 
     return df
 
+@st.cache_data
+def init_select(df):
+    # By default each brand is selected
+    for bf in df["Filter by Brand"].unique():
+        st.session_state[bf] = True
+
 
 df = read_data()
+init_select(df)
 average_x, max_x = df["Likes (k)"].mean(), df["Likes (k)"].max()
 average_y, max_y = df["CTR"].mean(), df["CTR"].max()
+
 
 st.markdown("<h1 style='text-align: center; color: black;'>Tik Tok Advertisement Review</h1>", unsafe_allow_html=True)
 
@@ -80,33 +88,28 @@ with choosebox:
             }}
         """
     ):
-        st.markdown(
-            '''
-            <style>
-            .stMarkdownContainer {
-                background-color: white;
-                color: green; # Adjust this for expander header color
-            }
-            </style>
-            ''',
-            unsafe_allow_html=True
-        )
-        with st.expander("# Filter by Category", expanded=True):
+        with st.container(height=240):
+            st.markdown("<ins>**Filter by Category**</ins>", unsafe_allow_html=True)
             cateset = df["Filter by Category"].unique().tolist()
             cate_check: list[bool] = [
-                st.checkbox(label=cate) if cate != DEFAULT_CATE else st.checkbox(label=cate, value=True) for cate in cateset
+                st.checkbox(label=cate) for cate in cateset
             ]
-            
-        with st.expander("Filter by Brand", expanded=True):
+
+        with st.container(height=300):
+            st.markdown("<ins>**Filter by Brand**</ins>", unsafe_allow_html=True)
             cate_chosen = [cate for cate, check in zip(cateset, cate_check) if check]
-            brandset = df[df["Filter by Category"].isin(cate_chosen)]["Filter by Brand"].unique().tolist()
-            if len(brandset) == 0:
-                st.write("")
-            brand_check = [
-                # st.checkbox(label=brand) if brand != DEFAULT_BRAND else st.checkbox(label=brand, value=True) for brand in brandset
-                st.checkbox(label=brand, value=True) for brand in brandset
-            ]
-            brand_chosen = [brand for brand, check in zip(brandset, brand_check) if check]
+            if not any(cate_chosen):
+               brandset = df 
+            else:
+                brandset = df[df["Filter by Category"].isin(cate_chosen)]
+
+            brandset = brandset["Filter by Brand"].unique().tolist()
+
+            for brand in brandset: 
+                select = st.checkbox(label=brand, value=st.session_state.get(brand, True))
+                st.session_state[brand] = select
+
+            brand_chosen = [brand for brand in df["Filter by Brand"].unique() if st.session_state[brand]]
 
 with chart:
     scatter = Scatter(
