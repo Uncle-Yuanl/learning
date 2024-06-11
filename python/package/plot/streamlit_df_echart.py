@@ -16,7 +16,7 @@ minio_endpoint = "https://cmiai-innoflex.unilever-china.com/yhaotemp/photo/"
 WIDTH = 1000
 HEIGHT = 500
 OPACITY = 0.9
-MARKERSIZE=40
+MARKERSIZE = 40
 
 DEFAULT_CATE = "Dressing"
 DEFAULT_BRAND = "Hellmann's"
@@ -43,7 +43,7 @@ def read_data():
 
 @st.cache_data
 def init_select(df):
-    # By default each brand is selected
+    # By default all brand are selected
     for bf in df["Filter by Brand"].unique():
         st.session_state[bf] = True
 
@@ -53,7 +53,7 @@ init_select(df)
 average_x, max_x = df["Likes (k)"].mean(), df["Likes (k)"].max()
 average_y, max_y = df["CTR"].mean(), df["CTR"].max()
 
-
+# Chart Title
 st.markdown("<h1 style='text-align: center; color: black;'>Tik Tok Advertisement Review</h1>", unsafe_allow_html=True)
 
 lb, choosebox, yaxis, chart, rb = st.columns([0.02, 0.18, 0.07, 0.73, 0.1])
@@ -154,7 +154,6 @@ with chart:
         label_opts=opts.LabelOpts(is_show=False),
         legend_opts=opts.LegendOpts(is_show=False),
         tooltip_opts=opts.TooltipOpts(is_show=True),
-        # TODO average of chosen brands
         markline_opts=opts.MarkLineOpts(
             data=[
                 opts.MarkLineItem(
@@ -295,33 +294,7 @@ with yaxis:
         </html>
     """
     st.markdown(yaxis_html, unsafe_allow_html=True)
-    pass   
-# 调整chart position在container中的绝对位置
-# with container:
 
-    # 调整video透明度
-    # video_html = """
-    #     <style>
-
-    #     video {
-    #         position: relative;
-    #         left: 10%;
-    #         top: 30px;
-    #         width: 80%;
-    #         height: 670px;
-    #         opacity: 0.6;
-    #         filter: brightness(0.6);
-    #         object-fit: none;
-    #         z-index: 1;
-    #     }
-
-    #     </style> 
-
-    #     <video loop muted autoplay>
-    #         <source src="https://cmiai-innoflex.unilever-china.com/yhaotemp/photo/tiktok_video.mp4" type="video/mp4" >
-    #     </video>
-
-    # """
 
 background_image = """
     <style>
@@ -333,20 +306,4 @@ background_image = """
     }
     </style>
 """
-
-# chart_html = """
-#     <style>
-
-#     iframe {
-#         position: absolute;
-#         right: 0px;
-#         top: 0px;
-#         z-index: 2;
-#     }
-
-#     </style>
-
-# """
-
-# st.markdown(chart_html, unsafe_allow_html=True)
 st.markdown(background_image, unsafe_allow_html=True)
