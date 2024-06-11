@@ -27,6 +27,30 @@ DISCARDS = [
     "7Up"
 ]
 
+RATIOMAPPING = {
+    'Sweetarts': 3.13,
+    'Maggi': 1.59,
+    'Kikkoman': 2.14,
+    'Knorr': 1.34,
+    "Nando's": 1.49,
+    'Cheetos': 1.85,
+    "Hellmann's": 1.96,
+    'Heinz': 2.38,
+    'Masako': 1.5,
+    'Domino': 1.29,
+    '7Up': 0.96,
+    'Ajinomoto': 1.5,
+    'Knorr_bak': 2.18,
+    'Takis': 1.01,
+    'Unox': 2.05,
+    'Better Than Bouillon': 1.29,
+    "Lay's": 1.07,
+    'Snickers': 1.78,
+    'McDonald': 1.32,
+    'Kettle': 1.8,
+    'Tacobell': 0.65
+}
+
 
 def get_url(localpath):
     with open(localpath, "rb") as img_file:
@@ -253,7 +277,10 @@ with chart:
                     series_name=row["Brand"],
                     y_axis=brandscatteritems,
                     symbol=f"image://{minio_endpoint}{row['Image']}",
-                    symbol_size=MARKERSIZE
+                    symbol_size=(
+                        MARKERSIZE * 0.8 * RATIOMAPPING.get(brand[0], 1.34),
+                        MARKERSIZE * 0.8
+                    ) if brand[0] in ["Hellmann's", "Heinz", "Snickers", "Sweetarts"] else MARKERSIZE
                 )
 
     scatter.set_series_opts(
