@@ -101,7 +101,7 @@ average_y, max_y = df["CTR"].mean(), df["CTR"].max()
 # Chart Title
 st.markdown("<h1 style='text-align: center; color: black;'>Tik Tok Advertisement Review</h1>", unsafe_allow_html=True)
 
-lb, choosebox, yaxis, chart, rb = st.columns([0.01, 0.18, 0.1, 0.8, 0.01])
+choosebox, yaxis, chart = st.columns([0.21, 0.08, 0.71])
 with choosebox:
     # Filter header
     filter_html = """
@@ -181,12 +181,15 @@ with choosebox:
                         }
 
                         .stCheckbox {
+                            font-size: x-small;
                             zoom: 80%;
+                            margin-right: 0px;
+                            gap: 0px;
                         }
 
-                        # [data-testid=stVerticalBlockBorderWrapper] {
-                        #     gap: 0.5rem;
-                        # }
+                        [data-testid=stVerticalBlock] {
+                            gap: 0.4rem;
+                        }
                         </style>
                     """,
                         unsafe_allow_html=True,
