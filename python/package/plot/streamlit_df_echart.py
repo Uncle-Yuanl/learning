@@ -5,6 +5,7 @@ from pyecharts.charts import Scatter
 from pyecharts.options import ScatterItem
 from pyecharts.commons.utils import JsCode
 from streamlit_extras.stylable_container import stylable_container
+from streamlit_js_eval import streamlit_js_eval
 import base64
 import pandas as pd
 from pathlib import Path
@@ -21,6 +22,11 @@ MARKERSIZE = 40
 DEFAULT_CATE = "Dressing"
 DEFAULT_BRAND = "Hellmann's"
 
+DISCARDS = [
+    "Cheetos",
+    "7Up"
+]
+
 
 def get_url(localpath):
     with open(localpath, "rb") as img_file:
@@ -28,28 +34,66 @@ def get_url(localpath):
 
     return encoded_img
 
+
 @st.cache_data
 def read_data():
     df = pd.read_excel(
         curdir.parent / "data/Tik Tok Advertisement Review_Clean list _Update 1.xlsx"
     )
-    df = df[df["Brand"] != 0]
     df["Brand"] = df["Brand"].apply(lambda x: str(x).strip())
     df["Filter by Brand"] = df["Filter by Brand"].apply(lambda x: str(x).strip())
+    df = df[df["Brand"] != 0]
+    df = df[~df["Filter by Brand"].isin(DISCARDS)]
     df = df[df["Image"].str.contains("png|jpg")]
     df["CTR"] = df["CTR"].str.replace('%', '').astype(int)
 
-    return df
+    # make brand-category mapping
+    mapping = df.groupby("Filter by Brand").agg(
+        {
+            "Filter by Category": lambda x: x.tolist()
+        }
+    )["Filter by Category"].to_dict()
+
+    return df, mapping
+
 
 @st.cache_data
 def init_select(df):
     # By default all brand are selected
-    for bf in df["Filter by Brand"].unique():
+    st.session_state["Brands"] = df["Filter by Brand"].unique().tolist()
+    select()
+
+
+def deselect():
+    if st.session_state["ALLCATE"]:
+        st.session_state["Brands"] = df["Filter by Brand"].unique().tolist()
+    for bf in st.session_state["Brands"]:
+        st.session_state[bf] = False
+    # st.session_state["Brands"] = []
+
+def select():
+    if st.session_state["ALLCATE"]:
+        st.session_state["Brands"] = df["Filter by Brand"].unique().tolist()
+    for bf in st.session_state["Brands"]:
         st.session_state[bf] = True
 
 
-df = read_data()
+def filter_category():
+    cates = []
+    for bcn in st.session_state["Brand_chosen"]:
+        cates.extend(st.session_state["BTC"].get(bcn, []))
+
+    st.session_state["Cateset"] = list(set(cates))
+
+
+def rerun():
+    st.session_state["Cateset"] = df["Filter by Category"].unique().tolist()
+    st.session_state["ALLCATE"] = True
+
+
+df, mapping = read_data()
 init_select(df)
+st.session_state["BTC"] = mapping
 average_x, max_x = df["Likes (k)"].mean(), df["Likes (k)"].max()
 average_y, max_y = df["CTR"].mean(), df["CTR"].max()
 
@@ -88,28 +132,77 @@ with choosebox:
             }}
         """
     ):
-        with st.container(height=240):
+        with st.container(height=260):
             st.markdown("<ins>**Filter by Category**</ins>", unsafe_allow_html=True)
-            cateset = df["Filter by Category"].unique().tolist()
+            cate_empty, reset = st.columns([0.1, 0.9])
+            with reset:
+                reset_ = st.button(
+                    "Reset",
+                    use_container_width=True
+                )
+                if reset_:
+                    streamlit_js_eval(js_expressions="parent.window.location.reload()")
+            cateset = st.session_state.get(
+                "Cateset",
+                df["Filter by Category"].unique().tolist()
+            )
             cate_check: list[bool] = [
                 st.checkbox(label=cate) for cate in cateset
             ]
+            st.session_state["Cateset"] = cateset
 
         with st.container(height=300):
             st.markdown("<ins>**Filter by Brand**</ins>", unsafe_allow_html=True)
+            with st.container(height=90, border=False):
+                brand_empty, cate_brand_choose = st.columns([0.1, 0.9])
+                with cate_brand_choose:
+                    deselect_brands = st.button(
+                        "Deselect all brands",
+                        on_click=deselect,
+                        use_container_width=True
+                    )
+                    doselect_brands = st.button(
+                        "Select all brands",
+                        on_click=select,
+                        use_container_width=True
+                    )
+                    # filter_cate = st.button(
+                    #     "Filter category",
+                    #     on_click=filter_category,
+                    #     use_container_width=True
+                    # )
+                    st.markdown(
+                        """
+                        <style>
+                        .stButton {
+                            height: 25px;
+                        }
+                        </style>
+                    """,
+                        unsafe_allow_html=True,
+                    )
+            
+            cateset = st.session_state["Cateset"]
+            # st.write(cateset)
             cate_chosen = [cate for cate, check in zip(cateset, cate_check) if check]
             if not any(cate_chosen):
-               brandset = df 
+               brandset = df
+               st.session_state["ALLCATE"] = True
             else:
+                st.session_state["ALLCATE"] = False
                 brandset = df[df["Filter by Category"].isin(cate_chosen)]
 
             brandset = brandset["Filter by Brand"].unique().tolist()
+            st.session_state["Brands"] = brandset
 
-            for brand in brandset: 
-                select = st.checkbox(label=brand, value=st.session_state.get(brand, True))
-                st.session_state[brand] = select
+            for brand in st.session_state["Brands"]:
+                brand_select = st.checkbox(label=brand, value=st.session_state.get(brand, True))
+                st.session_state[brand] = brand_select
 
-            brand_chosen = [brand for brand in df["Filter by Brand"].unique() if st.session_state[brand]]
+            brand_chosen = [brand for brand in st.session_state["Brands"] if st.session_state[brand]]
+            st.session_state["Brand_chosen"] = brand_chosen
+            # st.write(brand_chosen)
+
 
 with chart:
     scatter = Scatter(
@@ -207,7 +300,7 @@ with chart:
         yaxis_opts=opts.AxisOpts(
             type_="value",
             is_inverse=True,
-            min_=0,
+            min_=1,
             max_=max_y,
             axisline_opts=opts.AxisLineOpts(
                 symbol=['none', 'arrow']
@@ -280,8 +373,8 @@ with yaxis:
             .custom-yaxis {
                 position: absolute;
                 top: 250px;
-                left: -12px;
-                width: 115px;
+                left: -8px;
+                width: 100px;
                 font-size: 18px;
                 font-weight: bold;
                 color: white;
@@ -289,7 +382,7 @@ with yaxis:
             }
         </style>
         <body>
-            <p class="custom-yaxis">&ensp;CTR Top x%</p>
+            <p class="custom-yaxis">&ensp;CTR Rank</p>
         </body>
         </html>
     """
