@@ -61,6 +61,7 @@ def read_data():
 def init_select(df):
     # By default all brand are selected
     st.session_state["Brands"] = df["Filter by Brand"].unique().tolist()
+    st.session_state["ALLCATE"] = True
     select()
 
 
