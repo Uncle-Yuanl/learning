@@ -14,8 +14,8 @@ from pathlib import Path
 st.set_page_config(layout='wide')
 curdir = Path(__file__)
 minio_endpoint = "https://cmiai-innoflex.unilever-china.com/yhaotemp/photo/"
-WIDTH = 1000
-HEIGHT = 500
+WIDTH = 800
+HEIGHT = 600
 OPACITY = 0.9
 MARKERSIZE = 40
 
@@ -208,7 +208,7 @@ with choosebox:
 with chart:
     scatter = Scatter(
         init_opts=opts.InitOpts(
-            # width="400px",
+            width=f"{WIDTH}px",
             height=f"{HEIGHT}px",
             bg_color=f"rgba(255,255,255,{OPACITY})"
         ),
@@ -350,7 +350,7 @@ with chart:
         <style>
             .custom-xaxis {
                 position: relative;
-                left: 38%;
+                left: 25%;
                 width: 190px;
                 font-size: 18px;
                 font-weight: bold;
