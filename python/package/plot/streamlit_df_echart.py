@@ -101,7 +101,7 @@ average_y, max_y = df["CTR"].mean(), df["CTR"].max()
 # Chart Title
 st.markdown("<h1 style='text-align: center; color: black;'>Tik Tok Advertisement Review</h1>", unsafe_allow_html=True)
 
-lb, choosebox, yaxis, chart, rb = st.columns([0.02, 0.18, 0.07, 0.73, 0.1])
+lb, choosebox, yaxis, chart, rb = st.columns([0.01, 0.18, 0.1, 0.8, 0.01])
 with choosebox:
     # Filter header
     filter_html = """
@@ -110,7 +110,7 @@ with choosebox:
         <style>
             .custom-filter-header {
                 position: relative;
-                left: 35%;
+                left: 25%;
                 width: 80px;
                 font-size: 18px;
                 font-weight: bold;
@@ -176,8 +176,17 @@ with choosebox:
                         """
                         <style>
                         .stButton {
-                            height: 25px;
+                            height: 40px;
+                            zoom: 67%;
                         }
+
+                        .stCheckbox {
+                            zoom: 80%;
+                        }
+
+                        # [data-testid=stVerticalBlockBorderWrapper] {
+                        #     gap: 0.5rem;
+                        # }
                         </style>
                     """,
                         unsafe_allow_html=True,
@@ -350,7 +359,7 @@ with chart:
         <style>
             .custom-xaxis {
                 position: relative;
-                left: 25%;
+                left: 35%;
                 width: 190px;
                 font-size: 18px;
                 font-weight: bold;
@@ -400,4 +409,15 @@ background_image = """
     }
     </style>
 """
+chart_html = """
+    <style>
+
+    iframe {
+        zoom: 67%
+    }
+
+    </style>
+
+"""
+# st.markdown(chart_html, unsafe_allow_html=True)
 st.markdown(background_image, unsafe_allow_html=True)
