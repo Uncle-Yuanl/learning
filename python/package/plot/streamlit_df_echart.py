@@ -14,8 +14,8 @@ from pathlib import Path
 st.set_page_config(layout='wide')
 curdir = Path(__file__)
 minio_endpoint = "https://cmiai-innoflex.unilever-china.com/yhaotemp/photo/"
-WIDTH = 800
-HEIGHT = 600
+WIDTH = 680
+HEIGHT = 400
 OPACITY = 0.9
 MARKERSIZE = 40
 
@@ -133,7 +133,7 @@ with choosebox:
             }}
         """
     ):
-        with st.container(height=260):
+        with st.container(height=160):
             st.markdown("<ins>**Filter by Category**</ins>", unsafe_allow_html=True)
             cate_empty, reset = st.columns([0.1, 0.9])
             with reset:
@@ -152,7 +152,7 @@ with choosebox:
             ]
             st.session_state["Cateset"] = cateset
 
-        with st.container(height=300):
+        with st.container(height=260):
             st.markdown("<ins>**Filter by Brand**</ins>", unsafe_allow_html=True)
             with st.container(height=90, border=False):
                 brand_empty, cate_brand_choose = st.columns([0.1, 0.9])
@@ -362,7 +362,7 @@ with chart:
         <style>
             .custom-xaxis {
                 position: relative;
-                left: 35%;
+                left: 30%;
                 width: 190px;
                 font-size: 18px;
                 font-weight: bold;
@@ -385,7 +385,7 @@ with yaxis:
         <style>
             .custom-yaxis {
                 position: absolute;
-                top: 250px;
+                top: 200px;
                 left: -8px;
                 width: 100px;
                 font-size: 18px;
@@ -404,6 +404,14 @@ with yaxis:
 
 background_image = """
     <style>
+    [data-testid="stHeader"] {
+        height: 0rem;
+    }
+
+    [data-testid="stAppViewBlockContainer"] {
+        padding: 0rem 5rem 5rem;
+    }
+
     [data-testid="stAppViewContainer"] > .main {
         background-image: url("https://cmiai-innoflex.unilever-china.com/yhaotemp/photo/page_background.jpg");
         background-size: 100vw 100vh;  # This sets the size to cover 100% of the viewport width and height
