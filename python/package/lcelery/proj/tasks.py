@@ -32,3 +32,9 @@ def mul(x, y):
 @app.task
 def xsum(numbers):
     return sum(numbers)
+
+
+@app.task
+# 新添task之后，需要重新启动worker
+def xconcat(s1, s2):
+    return s1 + "-" + s2
