@@ -17,10 +17,15 @@ logger = logging.getLogger(f'【{__file__}】')
 
 from celery import Celery
 
-app = Celery('proj',
-             broker='redis://localhost:6379/1',
-             backend='redis://localhost:6379/2',
-             include=['proj.tasks'])
+app = Celery(
+    'proj',
+    broker='redis://localhost:6379/1',
+    backend='redis://localhost:6379/2',
+    include=[
+        'proj.tasks',
+        "proj.complex_tasks"
+    ]
+)
 
 # Optional configuration, see the application user guide.
 app.conf.update(
