@@ -15,7 +15,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(f'【{__file__}】')
 from celery import group, chain
-from proj.tasks import add, mul, xconcat
+from proj.tasks import add, mul, xconcat, task_use_task
 
 def get_result_and_status():
     # Need result backend
@@ -24,6 +24,14 @@ def get_result_and_status():
     print(res.id)
     print(res.state)
     print(res.successful(), res.failed())
+
+
+def use_nested_task():
+    res = task_use_task.delay(3, 4).get()
+    print(res)
+
+    g = group(task_use_task.s(i, i) for i in range(10))
+    print(g.apply_async().get())
 
 
 def get_with_error():
@@ -89,4 +97,5 @@ if __name__ == '__main__':
     # get_result_and_status()
     # get_with_error()
     # learning_signature()
-    learning_group_and_chain()
+    # learning_group_and_chain()
+    use_nested_task()
