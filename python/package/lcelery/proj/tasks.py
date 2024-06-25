@@ -89,6 +89,27 @@ def task_with_groupapply(x):
     return results
 
 
+@app.task
+def task_with_groupcall(x):
+    nestedg = group(
+        add(i, i) for i in range(x)
+    )
+    results = nestedg()
+
+    return results
+
+
+@app.task
+def task_with_groupdelaycall(x):
+    nestedg = group(
+        add.s(i, i) for i in range(x)
+    )
+    # results = nestedg()
+    results = nestedg.apply_async()
+
+    return results
+
+
 @app.task(bind=True)
 def task_with_groupapplybind(self, x):
     nestedg = group(

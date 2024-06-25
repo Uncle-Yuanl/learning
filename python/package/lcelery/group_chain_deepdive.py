@@ -102,8 +102,41 @@ def use_grouptaskapply():
     """
     from proj.tasks import task_with_groupapply
     gt = task_with_groupapply.s(2)
-    res = gt().get()
+    # res = gt().get()  # 直接报错：'int' object has no attribute 'app'
+    gt = task_with_groupapply.delay(2)
+    res = gt.collect()  # 'int' object has no attribute 'app'
     print(res)
+
+
+
+def use_grouptaskcall():
+    """直接报错：'int' object has no attribute 'app'
+    """
+    from proj.tasks import task_with_groupcall
+    gt = task_with_groupcall.delay(2)
+    res = list(gt.collect())
+    print(res)
+
+
+def use_grouptaskdelaycall():
+    """res1和2都成功
+    注意点：
+        grouptask中，group中的subtask需要.s但是不能get也不能delay
+    
+    总结：
+        1、@app.task不能使用get, delay
+        2、group中subtask需要.s
+        3、group直接call还是apply_async都可，就是别再get了
+        4、主函数中用的时候，需要delay或者get + apply_async + get
+
+    """
+    from proj.tasks import task_with_groupdelaycall
+    gt = task_with_groupdelaycall.delay(2)
+    res1 = list(gt.collect())
+    print(res1)
+    gt = task_with_groupdelaycall.s(2)
+    res2 = list(gt.apply_async().collect())
+    print(res2)
 
 
 def use_grouptaskapplybind():
@@ -134,6 +167,41 @@ def group_with_grouptask():
 
     res = gts.apply_async()
     res = res.get()
+    print(res)
+
+
+
+def group_with_grouptaskdelaycall():
+    """最后一个成功
+    """
+    from proj.tasks import task_with_groupdelaycall
+    gt = group(
+        task_with_groupdelaycall.s(i) for i in range(5, 8)
+    )
+
+    results = gt.apply_async()  # GroupResult
+    res = results.get()
+    print(res)        # 是可以直接get，不报错但是返回的是task id
+    
+    # gt = group(
+    #     task_with_groupdelaycall.delay(i) for i in range(5, 8)
+    # )
+    # results = gt.apply_async()  # 报错
+    # res = results.get()
+    # print(res)
+
+    gt = group(
+        task_with_groupdelaycall.s(i) for i in range(5, 8)
+    )
+    results = gt()       # GroupResult
+    res = results.get()  # 是可以直接get，不报错但是返回的是task id
+
+    gt = group(
+        task_with_groupdelaycall.s(i) for i in range(5, 8)
+    )
+    results = gt.apply()           # GroupResult
+    res = results.get()            # res每个元素都是GroupResult
+    res = [x.get() for x in res]   # Final result
     print(res)
 
 
@@ -199,10 +267,13 @@ if __name__ == "__main__":
     # group_with_group()
     # use_grouptask()
     # use_grouptaskapply()
+    # use_grouptaskcall()
+    # use_grouptaskdelaycall()
     # use_grouptaskapplybind()
     # use_grouptaskget()
     # group_with_grouptask()
+    group_with_grouptaskdelaycall()
     # loop_use_grouptask()
     # group_with_grouptaskallow()
     # first_chain()
-    first_chain_back()
+    # first_chain_back()
