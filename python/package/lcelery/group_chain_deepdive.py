@@ -16,6 +16,7 @@ logging.basicConfig(
 logger = logging.getLogger(f'【{__file__}】')
 import time
 from celery import group, chain
+from proj.tasks import add, mul, xconcat
 from proj.tasks import cpu_cost_task, cpu_error_task
 from proj.tasks import task_with_group
 
@@ -163,6 +164,34 @@ def group_with_grouptaskallow():
     print(res)
 
 
+def first_chain():
+    """前面的结果作为第一个参数
+    """
+    c = chain(
+        add.s(1, 2),
+        # mul.s(3)
+        xconcat.s(5)  # 3-5
+    )
+
+    results = c.apply_async()
+    res = results.get()
+    print(res)
+
+
+def first_chain_back():
+    """前面的结果作为第一个参数
+    """
+    downstream = xconcat.s(5)
+    c = chain(
+        add.s(1, 2),
+        downstream  # 还是3-5
+    )
+
+    results = c.apply_async()
+    res = results.get()
+    print(res)
+
+
 if __name__ == "__main__":
     # single_processor()
     # multi_processor_state_check()
@@ -174,4 +203,6 @@ if __name__ == "__main__":
     # use_grouptaskget()
     # group_with_grouptask()
     # loop_use_grouptask()
-    group_with_grouptaskallow()
+    # group_with_grouptaskallow()
+    # first_chain()
+    first_chain_back()

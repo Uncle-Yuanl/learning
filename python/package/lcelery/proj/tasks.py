@@ -46,6 +46,11 @@ def xsum(numbers):
 @app.task
 # 新添task之后，需要重新启动worker
 def xconcat(s1, s2):
+    if isinstance(s1, int):
+        s1 = str(s1)
+    if isinstance(s2, int):
+        s2 = str(s2)
+        
     return s1 + "-" + s2
 
 
