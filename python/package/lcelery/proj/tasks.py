@@ -17,6 +17,7 @@ logger = logging.getLogger(f'【{__file__}】')
 
 import time
 from celery import group
+from celery.result import allow_join_result
 from .celery import app
 
 
@@ -93,7 +94,7 @@ def task_with_groupapplybind(self, x):
     return results
 
 
-app.task
+@app.task
 def task_with_groupapplyget(x):
     """启动worker直接找不到这个函数了，神奇
     """
@@ -103,3 +104,18 @@ def task_with_groupapplyget(x):
     results = nestedg.apply_async().get()
 
     return results
+
+
+@app.task()
+def task_with_groupallowjoin(x):
+    """
+    """
+    nestedg = group(
+        add(i, i) for i in range(x)
+    )
+    results = nestedg()
+    
+    with allow_join_result():
+        res = results.get()
+
+    # return res

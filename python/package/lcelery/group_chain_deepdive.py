@@ -115,8 +115,7 @@ def use_grouptaskapplybind():
 
 
 def use_grouptaskget():
-    """此时这个task_with_groupapplyget函数，直接变成了class function
-    并不是celery的封装对象了
+    """一样的：'int' object has no attribute 'app'
     """
     from proj.tasks import task_with_groupapplyget
     gt = task_with_groupapplyget.s(2)
@@ -135,7 +134,7 @@ def group_with_grouptask():
     res = gts.apply_async()
     res = res.get()
     print(res)
-    
+
 
 def loop_use_grouptask():
     grouplist = []
@@ -149,6 +148,21 @@ def loop_use_grouptask():
     print(res)
 
 
+def group_with_grouptaskallow():
+    """不管task有没有return
+    一样的：'int' object has no attribute 'app'
+    """
+    from proj.tasks import task_with_groupallowjoin
+    
+    gts = group(
+        task_with_groupallowjoin.s(i) for i in range(2)
+    )
+
+    res = gts.apply_async()
+    res = res.get()
+    print(res)
+
+
 if __name__ == "__main__":
     # single_processor()
     # multi_processor_state_check()
@@ -159,4 +173,5 @@ if __name__ == "__main__":
     # use_grouptaskapplybind()
     # use_grouptaskget()
     # group_with_grouptask()
-    loop_use_grouptask()
+    # loop_use_grouptask()
+    group_with_grouptaskallow()
