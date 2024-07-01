@@ -224,7 +224,7 @@ def group_with_grouptaskallow():
     from proj.tasks import task_with_groupallowjoin
     
     gts = group(
-        task_with_groupallowjoin.s(i) for i in range(2)
+        task_with_groupallowjoin.s(i) for i in range(2, 4)
     )
 
     res = gts.apply_async()
@@ -260,6 +260,76 @@ def first_chain_back():
     print(res)
 
 
+def use_nested_group():
+    from proj.tasks import task_with_nested_group
+
+    s = task_with_nested_group.delay(2)
+    results = list(s.collect())
+    print(results)
+
+
+def use_nested_groupimp():
+    from proj.tasks import task_with_nested_groupimp
+
+    s = task_with_nested_groupimp.delay(2)
+    results = list(s.collect())
+    print(results)
+
+
+def chain_with_grouptask():
+    """apply就是同步执行，所以能够debug到
+    """
+    from proj.tasks import task_with_nested_groupimp
+    c = chain(
+        add.s(1, 2),
+        task_with_nested_groupimp.s()
+    )
+    results = c.apply()
+    res = results.get()
+    res = [x.get() for x in res]
+    print(res)
+
+
+def grouptask_as_chain_head_1():
+    from proj.tasks import task_with_nested_groupimp
+    c = chain(
+        task_with_nested_groupimp.s(2),
+        add.s(2)
+    )
+    results = c.apply()
+    res = results.get()
+    # res = [x.get() for x in res]
+    print(res)
+
+
+def grouptask_as_chain_head_2():
+    from proj.tasks import task_with_nested_groupapplyimp
+    c = chain(
+        task_with_nested_groupapplyimp.s(2),
+        add.s(2)
+    )
+    results = c.apply()
+    res = results.get()
+    # res = [x.get() for x in res]
+    print(res)
+
+
+def grouptask_as_chain_head_async():
+    """apply和apply_async都是返回GroupResult对象
+    不同点在于：
+        如果主函数中使用apply，被调用的task中可以使用get方法
+        如果主函数中使用apply_async，则被调用函数不能使用get相关方法
+    """
+    from proj.tasks import task_with_nested_groupimp
+    c = chain(
+        task_with_nested_groupimp.s(2),
+        add.s(2)
+    )
+    results = c.apply_async()
+    res = results.get()  # 此时这里的add中的get方法就会报错
+    print(res)
+
+
 if __name__ == "__main__":
     # single_processor()
     # multi_processor_state_check()
@@ -272,8 +342,14 @@ if __name__ == "__main__":
     # use_grouptaskapplybind()
     # use_grouptaskget()
     # group_with_grouptask()
-    group_with_grouptaskdelaycall()
+    # group_with_grouptaskdelaycall()
     # loop_use_grouptask()
-    # group_with_grouptaskallow()
+    group_with_grouptaskallow()
     # first_chain()
     # first_chain_back()
+    # use_nested_group()
+    # use_nested_groupimp()
+    # chain_with_grouptask()
+    # grouptask_as_chain_head_1()
+    # grouptask_as_chain_head_2()
+    # grouptask_as_chain_head_async()

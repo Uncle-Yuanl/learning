@@ -18,12 +18,19 @@ logger = logging.getLogger(f'【{__file__}】')
 import time
 from celery import group
 from celery.result import allow_join_result
+from celery.result import GroupResult
 from .celery import app
 
 
 @app.task
 def add(x, y):
+    logger.info(f"x: {x}, y: {y}")
+    if isinstance(x, GroupResult):
+        xs = x.get()
+        return [x + y for x in xs]
     return x + y
+
+
 
 
 @app.task
@@ -122,7 +129,7 @@ def task_with_groupapplybind(self, x):
 
 @app.task
 def task_with_groupapplyget(x):
-    """启动worker直接找不到这个函数了，神奇
+    """不能用get
     """
     nestedg = group(
         add(i, i) for i in range(x)
@@ -137,11 +144,61 @@ def task_with_groupallowjoin(x):
     """
     """
     nestedg = group(
-        add(i, i) for i in range(x)
+        add.s(i, i) for i in range(x, x + x)
     )
-    results = nestedg()
+    results = nestedg.apply_async()
     
     with allow_join_result():
         res = results.get()
 
-    # return res
+    return res
+        
+
+@app.task
+def task_with_nested_group(x):
+    """这个参数生成有问题，add.s(i, j)只有第一个j是3，其他都是5
+    """
+    inner_nested_group = group(
+        group(
+            add.s(i, j) for i in range(x)
+        ) for j in range(3, 6)
+    )
+
+    results = inner_nested_group.apply_async()
+
+    return results
+
+
+@app.task
+def task_with_nested_groupimp(x):
+    """这个是没问题
+    """
+    inner_nested_group = group(
+        group(
+            add.s(i, i) for i in range(j)
+        ) for j in range(x, 6)
+    )
+
+    results = inner_nested_group.apply_async()
+
+    # Error: 目前不知道怎么在task中获取结果
+    # do something with results
+    # res = results.get()
+    # res = results.join()
+
+    return results
+
+
+@app.task
+def task_with_nested_groupapplyimp(x):
+    """
+    """
+    inner_nested_group = group(
+        group(
+            add.s(i, i) for i in range(j)
+        ) for j in range(x, 6)
+    )
+
+    results = inner_nested_group.apply()
+
+    return results

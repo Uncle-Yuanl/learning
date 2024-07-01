@@ -30,7 +30,12 @@ app = Celery(
 # Optional configuration, see the application user guide.
 app.conf.update(
     result_expires=3600,
+    # allow GroupResult to be transfered
+    task_serializer='pickle',
+    result_serializer='pickle',
+    accept_content=['application/json', 'application/x-python-serialize']
 )
+
 
 if __name__ == '__main__':
     app.start()
