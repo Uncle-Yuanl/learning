@@ -23,7 +23,8 @@ app = Celery(
     backend='redis://localhost:6379/2',
     include=[
         'proj.tasks',
-        "proj.complex_tasks"
+        "proj.complex_tasks",
+        "proj.image_tasks"
     ]
 )
 
