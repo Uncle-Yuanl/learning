@@ -1,1 +1,6 @@
 nni_hello_hpo/data
+
+# pycache
+**/__pycache__/
+
+**/celerybeat-schedule.*

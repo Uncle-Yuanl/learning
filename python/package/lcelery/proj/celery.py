@@ -16,6 +16,7 @@ logging.basicConfig(
 logger = logging.getLogger(f'【{__file__}】')
 
 from celery import Celery
+from .schedule_tasks import beat_schedule
 
 app = Celery(
     'proj',
@@ -34,7 +35,8 @@ app.conf.update(
     # allow GroupResult to be transfered
     task_serializer='pickle',
     result_serializer='pickle',
-    accept_content=['application/json', 'application/x-python-serialize']
+    accept_content=['application/json', 'application/x-python-serialize'],
+    beat_schedule=beat_schedule
 )
 
 
