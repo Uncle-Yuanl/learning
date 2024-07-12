@@ -4,3 +4,6 @@ nni_hello_hpo/data
 **/__pycache__/
 
 **/celerybeat-schedule.*
+
+# LLM api key
+.env
