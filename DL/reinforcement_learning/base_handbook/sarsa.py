@@ -86,6 +86,7 @@ class Sarsa:
     
     def update(self, s0, a0, r, s1, a1):
         """更新Q_table
+        注意更新的对象是当前的状态动作集
         """
         td_error = r + self.gamma * self.Q_table[s1, a1] - self.Q_table[s0, a0]
         self.Q_table[s0, a0] += self.alpha * td_error
