@@ -16,6 +16,7 @@ logging.basicConfig(
 logger = logging.getLogger(f'【{__file__}】')
 
 import time
+import random
 from celery import group
 from celery.result import allow_join_result
 from celery.result import GroupResult
@@ -202,3 +203,9 @@ def task_with_nested_groupapplyimp(x):
     results = inner_nested_group.apply()
 
     return results
+
+
+@app.task
+def random_wait(i):
+    time.sleep(random.randint(1, 5))
+    return i

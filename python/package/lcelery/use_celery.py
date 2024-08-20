@@ -93,9 +93,19 @@ def learning_group_and_chain():
     print(res)
 
 
+def use_random_wait(n):
+    from proj.tasks import random_wait
+    res = group(
+        random_wait.s(i) for i in range(n)
+    ).apply_async().get()
+    
+    return res
+
+
 if __name__ == '__main__':
     # get_result_and_status()
     # get_with_error()
     # learning_signature()
     # learning_group_and_chain()
-    use_nested_task()
+    # use_nested_task()
+    use_random_wait(6)
