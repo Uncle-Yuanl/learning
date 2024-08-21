@@ -110,7 +110,7 @@ if __name__ == "__main__":
                     'rewards': [],
                     'dones': []
                 }
-                state = env.reset(seed=0)
+                state, info = env.reset(seed=0)
                 done = False
                 while not done:
                     action = agent.take_action(state)
