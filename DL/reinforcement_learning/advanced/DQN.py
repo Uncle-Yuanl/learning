@@ -24,7 +24,7 @@ from tqdm import tqdm
 import torch
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
-from rl_utils import ReplayBuffer, train_off_policy, moving_average
+from rl_utils import ReplayBuffer, train_off_policy_agent, moving_average
 
 
 class Qnet(torch.nn.Module):
@@ -142,7 +142,7 @@ if __name__ == "__main__":
         target_update, device
     )
 
-    return_list = train_off_policy(env, envseed, agent, num_episodes, replay_buffer, minimal_size, batch_size)
+    return_list = train_off_policy_agent(env, envseed, agent, num_episodes, replay_buffer, minimal_size, batch_size)
     episodes_list = list(range(len(return_list)))
     plt.plot(episodes_list, return_list)
     plt.xlabel('Episodes')
