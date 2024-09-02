@@ -279,13 +279,33 @@ async def multi_stack_main():
 
 # ========================== asyncio.run无法嵌套 =============================
 
-async def main_nested():
+# async def main_nested():
 
-    result = await asyncio.run(
-        multi_stack_main()
-    )
+#     result = await asyncio.run(
+#         multi_stack_main()
+#     )
 
-    return result
+#     return result
 
 
-result = asyncio.run(main_nested())
+# result = asyncio.run(main_nested())
+        
+# =========================== aiohttp client多次使用 =================================
+async def use_session(session):
+    async with session.get(
+        "https://www.bing.com/orgid/acclink/refresh?correlationId=66d0305f221c4a29bbb2bf58371720e8"
+    ) as resp:
+        res = await resp.content.read(10)
+        return resp.status
+    
+
+async def use_session_main():
+    session = aiohttp.ClientSession()
+    tasks = [
+        asyncio.create_task(use_session(session)) for _ in range(5)
+    ]
+    res = await asyncio.gather(*tasks)
+    await session.close()
+    return res
+
+result = asyncio.run(use_session_main())
