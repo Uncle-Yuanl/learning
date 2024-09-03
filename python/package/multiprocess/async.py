@@ -308,4 +308,10 @@ async def use_session_main():
     await session.close()
     return res
 
-result = asyncio.run(use_session_main())
+# result = asyncio.run(use_session_main())
+
+
+# =========================== event loop is closed =================================
+asyncio.get_event_loop().close()
+asyncio.get_event_loop().is_closed()
+asyncio.get_event_loop().run_until_complete(asyncio.sleep(1))
