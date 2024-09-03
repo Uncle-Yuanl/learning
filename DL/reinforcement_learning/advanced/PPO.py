@@ -97,7 +97,7 @@ class PPOContinuous(PPO):
         actor_lr, critic_lr, lmbda, epochs, eps, gamma, device
     ):
         super().__init__(
-            self, state_dim, hidden_dim, action_dim,
+            state_dim, hidden_dim, action_dim,
             actor_lr, critic_lr, lmbda, epochs, eps, gamma, device
         )
         self.actor = PolicyNetContinuous(state_dim, hidden_dim,action_dim).to(device)
@@ -222,5 +222,5 @@ def train_continous():
 
 
 if __name__ == "__main__":
-    train_discrete()
-    # train_continous()
+    # train_discrete()
+    train_continous()
