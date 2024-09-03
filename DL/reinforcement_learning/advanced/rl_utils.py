@@ -18,6 +18,7 @@ import collections
 import random
 import numpy as np
 from tqdm import tqdm
+import torch
 
 
 class ReplayBuffer:
@@ -117,3 +118,19 @@ def train_on_policy_agent(env, envseed, agent, num_episodes):
                     pbar.set_postfix({'episode': '%d' % (num_episodes/10 * i + i_episode+1), 'return': '%.3f' % np.mean(return_list[-10:])})
                 pbar.update(1)
     return return_list
+
+
+def compute_advantage(gamma, lmbda, td_delta: torch.tensor):
+    """GAE
+
+    Args:
+        td_delta: 每个时间步的delta(时序差分误差)
+    """
+    td_delta = td_delta.detach().numpy()
+    advantage_list = []
+    advantage = 0.0
+    for delta in td_delta[::-1]:
+        advantage = gamma * lmbda * advantage + delta
+        advantage_list.append(advantage)
+    advantage_list.reverse()
+    return torch.tensor(advantage_list, dtype=torch.float)
