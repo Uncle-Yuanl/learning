@@ -14,9 +14,9 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(f'【{__file__}】')
-from datasets import Dataset
 import pandas as pd
 import torch
+from datasets import Dataset
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
@@ -26,11 +26,12 @@ from transformers import (
     GenerationConfig
 )
 from peft import LoraConfig, TaskType, get_peft_model
+from peft import PeftModel
 
 
 def process_func(example):
     """对json格式的文本dataset进行处理
-    """
+    """    
     # Llama分词器会将一个中文字切分为多个token，因此需要放开一些最大长度，保证数据的完整性
     MAX_LENGTH = 384
     input_ids, attention_mask, labels = [], [], []
@@ -65,44 +66,10 @@ def process_func(example):
     }
 
 
-def chat(prompt):
-    messages = [
-        {"role": "system", "content": "假设你是皇帝身边的女人--甄嬛。"},
-        {"role": "user", "content": prompt}
-    ]
-
-    input_ids = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    model_inputs = tokenizer([input_ids], return_tensors="pt").to('cuda')
-    generated_ids = model.generate(model_inputs.input_ids,max_new_tokens=512)
-    generated_ids = [
-        output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
-    ]
-    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-    print(response)
-
-
-if __name__ == "__main__":
-    projdir = "/media/data/LLMS/LlamaHuanhuan"
-    modelcache = "/media/data/LLMS/Llama3-hf"
-    outputdir = "/media/data/LLMS/LlamaHuanhuan"
+def lora_finetune():
     df = pd.read_json(f"{projdir}/huanhuan.json")
     ds = Dataset.from_pandas(df)
 
-    chat_template = (
-        "{% if messages[0]['role'] == 'system' %}{% set loop_messages = messages[1:] %}"
-        "{% set system_message = messages[0]['content'] %}{% else %}{% set loop_messages = messages %}"
-        "{% set system_message = false %}{% endif %}{% for message in loop_messages %}"
-        "{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}"
-        "{{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}"
-        "{% endif %}{% if loop.index0 == 0 and system_message != false %}"
-        "{% set content = '<<SYS>>\\n' + system_message + '\\n<</SYS>>\\n\\n' + message['content'] %}{% else %}"
-        "{% set content = message['content'] %}{% endif %}{% if message['role'] == 'user' %}"
-        "{{ bos_token + '[INST] ' + content.strip() + ' [/INST]' }}{% elif message['role'] == 'assistant' %}"
-        "{{ ' '  + content.strip() + ' ' + eos_token }}{% endif %}{% endfor %}"
-    )
-    tokenizer = AutoTokenizer.from_pretrained(modelcache)#, use_fast=False, trust_remote_code=True)
-    tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.chat_template = chat_template
     messages = [
         {"role": "system", "content": "现在你要扮演皇帝身边的女人--甄嬛"},
         {"role": "user", "content": '你好呀'},
@@ -150,4 +117,63 @@ if __name__ == "__main__":
     )
     trainer.train()
 
+
+def lora_load_chat():
+    # 加载模型
+    model = AutoModelForCausalLM.from_pretrained(
+        modelcache,
+        device_map="auto",
+        torch_dtype=torch.bfloat16,
+        trust_remote_code=True
+    ).eval()
+
+    # 加载lora权重
+    model = PeftModel.from_pretrained(
+        model,
+        model_id=f"{outputdir}/checkpoint-699"
+    )
+
+    prompt = "梅姐姐的孩子到底是不是朕的！"
+    messages = [
+        {"role": "system", "content": "假设你是皇帝身边的女人--甄嬛。"},
+        {"role": "user", "content": prompt}
+    ]
+
+    input_ids = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    model_inputs = tokenizer([input_ids], return_tensors="pt").to('cuda')
+    generated_ids = model.generate(
+        inputs=model_inputs.input_ids,
+        max_new_tokens=512,
+        pad_token_id=tokenizer.eos_token_id    
+    )
+    generated_ids = [
+        output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+    ]
+    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+    print(response)
+
+
+if __name__ == "__main__":
+    projdir = "/media/data/LLMS/LlamaHuanhuan"
+    modelcache = "/media/data/LLMS/Llama3-hf"
+    outputdir = "/media/data/LLMS/LlamaHuanhuan"
     
+    chat_template = (
+        "{% if messages[0]['role'] == 'system' %}{% set loop_messages = messages[1:] %}"
+        "{% set system_message = messages[0]['content'] %}{% else %}{% set loop_messages = messages %}"
+        "{% set system_message = false %}{% endif %}{% for message in loop_messages %}"
+        "{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}"
+        "{{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}"
+        "{% endif %}{% if loop.index0 == 0 and system_message != false %}"
+        "{% set content = '<<SYS>>\\n' + system_message + '\\n<</SYS>>\\n\\n' + message['content'] %}{% else %}"
+        "{% set content = message['content'] %}{% endif %}{% if message['role'] == 'user' %}"
+        "{{ bos_token + '[INST] ' + content.strip() + ' [/INST]' }}{% elif message['role'] == 'assistant' %}"
+        "{{ ' '  + content.strip() + ' ' + eos_token }}{% endif %}{% endfor %}"
+    )
+    tokenizer = AutoTokenizer.from_pretrained(modelcache, use_fast=False, trust_remote_code=True)
+    tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.chat_template = chat_template
+
+    # lora_finetune()
+
+    lora_load_chat()
