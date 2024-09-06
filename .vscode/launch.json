@@ -24,6 +24,21 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "cwd": "${workspaceFolder}",
+        },
+        {
+            "name": "LlaMa3",
+            "type": "debugpy",
+            "python": "/home/yhao/.conda/envs/llamacpp/bin/python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "NCCL_IB_DISABLE": "1",
+                "NCCL_P2P_DISABLE": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+            }
         }
     ]
 }
