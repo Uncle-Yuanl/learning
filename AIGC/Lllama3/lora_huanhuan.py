@@ -70,6 +70,7 @@ def lora_finetune():
     df = pd.read_json(f"{projdir}/huanhuan.json")
     ds = Dataset.from_pandas(df)
 
+    tokenizer.pad_token = tokenizer.eos_token
     messages = [
         {"role": "system", "content": "现在你要扮演皇帝身边的女人--甄嬛"},
         {"role": "user", "content": '你好呀'},
@@ -142,7 +143,7 @@ def lora_load_chat():
     input_ids = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     model_inputs = tokenizer([input_ids], return_tensors="pt").to('cuda')
     generated_ids = model.generate(
-        inputs=model_inputs.input_ids,
+        **model_inputs,
         max_new_tokens=512,
         pad_token_id=tokenizer.eos_token_id    
     )
@@ -158,21 +159,7 @@ if __name__ == "__main__":
     modelcache = "/media/data/LLMS/Llama3-hf"
     outputdir = "/media/data/LLMS/LlamaHuanhuan"
     
-    chat_template = (
-        "{% if messages[0]['role'] == 'system' %}{% set loop_messages = messages[1:] %}"
-        "{% set system_message = messages[0]['content'] %}{% else %}{% set loop_messages = messages %}"
-        "{% set system_message = false %}{% endif %}{% for message in loop_messages %}"
-        "{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}"
-        "{{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}"
-        "{% endif %}{% if loop.index0 == 0 and system_message != false %}"
-        "{% set content = '<<SYS>>\\n' + system_message + '\\n<</SYS>>\\n\\n' + message['content'] %}{% else %}"
-        "{% set content = message['content'] %}{% endif %}{% if message['role'] == 'user' %}"
-        "{{ bos_token + '[INST] ' + content.strip() + ' [/INST]' }}{% elif message['role'] == 'assistant' %}"
-        "{{ ' '  + content.strip() + ' ' + eos_token }}{% endif %}{% endfor %}"
-    )
     tokenizer = AutoTokenizer.from_pretrained(modelcache, use_fast=False, trust_remote_code=True)
-    tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.chat_template = chat_template
 
     # lora_finetune()
 
