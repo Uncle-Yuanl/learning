@@ -119,7 +119,7 @@ def lora_finetune():
     trainer.train()
 
 
-def lora_load_chat():
+def lora_load_chat(MAXLEN=128000):
     # 加载模型
     model = AutoModelForCausalLM.from_pretrained(
         modelcache,
@@ -134,24 +134,27 @@ def lora_load_chat():
         model_id=f"{outputdir}/checkpoint-699"
     )
 
-    prompt = "梅姐姐的孩子到底是不是朕的！"
     messages = [
         {"role": "system", "content": "假设你是皇帝身边的女人--甄嬛。"},
-        {"role": "user", "content": prompt}
     ]
-
-    input_ids = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    model_inputs = tokenizer([input_ids], return_tensors="pt").to('cuda')
-    generated_ids = model.generate(
-        **model_inputs,
-        max_new_tokens=512,
-        pad_token_id=tokenizer.eos_token_id    
-    )
-    generated_ids = [
-        output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
-    ]
-    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-    print(response)
+    curlen = 0
+    while curlen < MAXLEN:
+        prompt = input("User: ")
+        messages.append({"role": "user", "content": prompt})
+        input_ids = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        model_inputs = tokenizer([input_ids], return_tensors="pt").to('cuda')
+        curlen = model_inputs["input_ids"].shape[-1]
+        generated_ids = model.generate(
+            **model_inputs,
+            max_new_tokens=512,
+            pad_token_id=tokenizer.eos_token_id    
+        )
+        generated_ids = [
+            output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+        ]
+        response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+        print(response)
+        messages.append({"role": "assistant", "content": response})
 
 
 if __name__ == "__main__":
