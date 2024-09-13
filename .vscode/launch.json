@@ -39,6 +39,33 @@
                 "NCCL_P2P_DISABLE": "1",
                 "CUDA_VISIBLE_DEVICES": "0"
             }
+        },
+        {
+            "name": "StackLlaMa",
+            "type": "debugpy",
+            "python": "/home/yhao/.conda/envs/llamacpp/bin/python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "NCCL_IB_DISABLE": "1",
+                "NCCL_P2P_DISABLE": "1",
+                "CUDA_VISIBLE_DEVICES": "0",
+                "http_proxy": "http://localhost:7890",
+                "https_proxy": "http://localhost:7890",
+                "WANDB_PROJECT": "StackLlaMa",
+                "WANDB_LOG_MODEL": "false",
+                "WANDB_WATCH": "false"
+            },
+            "args": [
+                "sft",
+                "--num_workers", "2",
+                "--fp16",
+                "--batch_size", "1",
+                "--gradient_accumulation_steps", "64"
+            ]
         }
     ]
 }
