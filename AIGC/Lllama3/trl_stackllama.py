@@ -6,6 +6,10 @@
 @Author :   yhao 
 @Email  :   data4.cmi@unilever.com
 @Desc   :   使用stackoverflow数据、RLHF微调llama3.1
+            流程：
+                https://huggingface.co/blog/stackllama
+            SFT QLora:
+                https://github.com/philschmid/deep-learning-pytorch-huggingface/blob/main/training/instruction-tune-llama-2-int4.ipynb
 '''
 
 import logging
@@ -19,12 +23,16 @@ logger = logging.getLogger(f'【{__file__}】')
 import argparse
 import os
 from tqdm import tqdm
+import torch
 from datasets import load_dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, logging, set_seed
+from transformers import BitsAndBytesConfig
 from accelerate import Accelerator
-from peft import LoraConfig
-from trl import SFTTrainer
+from accelerate.utils import DistributedType
+from peft import LoraConfig, prepare_model_for_kbit_training, get_peft_model
+from trl import SFTConfig, SFTTrainer
 from trl.trainer import ConstantLengthDataset
+
 
 def prepare_sample_text(example):
     """Prepare the text from a sample of the dataset.
@@ -47,9 +55,6 @@ def chars_token_ratio(dataset, tokenizer, nb_examples=400):
 
         return total_characters / total_tokens
 
-
-def print_trainable_parameters(model):
-    pass
 
 def create_datasets(tokenizer, args):
     dataset = load_dataset(
@@ -107,9 +112,11 @@ def run_training(
     )
 
     train_data.start_iteration = 0
-    training_args = TrainingArguments(
+    # training_args = TrainingArguments(
+    training_args = SFTConfig(
         output_dir=args.output_dir,
         dataloader_drop_last=True,
+        packing=True,
         eval_strategy="steps",
         max_steps=args.max_steps,
         eval_steps=args.eval_freq,
@@ -117,6 +124,7 @@ def run_training(
         logging_steps=args.log_freq,
         per_device_train_batch_size=args.batch_size,
         per_device_eval_batch_size=args.batch_size,
+        optim="paged_adamw_32bit",
         learning_rate=args.learning_rate,
         lr_scheduler_type=args.lr_scheduler_type,
         warmup_steps=args.num_warmup_steps,
@@ -124,25 +132,39 @@ def run_training(
         gradient_checkpointing=args.gradient_checkpointing,
         fp16=args.fp16,
         bf16=args.bf16,
+        max_grad_norm=0.3,
         weight_decay=args.weight_decay,
         run_name="llama3.1-8b-finetuned",
         report_to="none",
         ddp_find_unused_parameters=not args.gradient_checkpointing,
-        deepspeed="/home/yhao/code/learning/AIGC/Lllama3/trainer_deepspeed.json"
+        disable_tqdm=False, # disable tqdm since with packing values are in correct
+        # 和training_args.distributed_state.distributed_type同步设置，否则Accelerator()报错
+        # deepspeed="/home/yhao/code/learning/AIGC/Lllama3/trainer_deepspeed.json"
     )
+    # training_args.distributed_state.distributed_type = DistributedType.DEEPSPEED
 
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.bfloat16,
+    )
     model = AutoModelForCausalLM.from_pretrained(
         args.model_path,
-        load_in_8bit=True,
-        device_map={"": Accelerator().process_index}
+        quantization_config=bnb_config,
+        device_map={"": Accelerator().process_index},
+        use_cache=False,
     )
+    model.config.pretraining_tp = 1
+    model = prepare_model_for_kbit_training(model) # transformers...LlamaForCausalLM dtype=float32
+    model = get_peft_model(model, lora_config)     # peft...PeftModelForCausalLM     dtype=float32
+
     trainer = SFTTrainer(
         model=model,
         args=training_args,
         train_dataset=train_data,
         eval_dataset=val_data,
         peft_config=lora_config,
-        packing=True
     )
     trainer.model.print_trainable_parameters()
     print("Training...")

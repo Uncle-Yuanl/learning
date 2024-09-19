@@ -57,12 +57,14 @@
                 "https_proxy": "http://localhost:7890",
                 "WANDB_PROJECT": "StackLlaMa",
                 "WANDB_LOG_MODEL": "false",
-                "WANDB_WATCH": "false"
+                "WANDB_WATCH": "false",
+                "RANK": "0",
+                "WORLD_SIZE": "1"
             },
             "args": [
                 "sft",
                 "--num_workers", "2",
-                "--fp16",
+                "--bf16",
                 "--batch_size", "1",
                 "--gradient_accumulation_steps", "64"
             ]
