@@ -135,7 +135,7 @@ def run_training(
         max_grad_norm=0.3,
         weight_decay=args.weight_decay,
         run_name="llama3.1-8b-finetuned",
-        report_to="none",
+        report_to="wandb",
         ddp_find_unused_parameters=not args.gradient_checkpointing,
         disable_tqdm=False, # disable tqdm since with packing values are in correct
         # 和training_args.distributed_state.distributed_type同步设置，否则Accelerator()报错
@@ -168,7 +168,7 @@ def run_training(
     )
     trainer.model.print_trainable_parameters()
     print("Training...")
-    trainer.train()
+    trainer.train(resume_from_checkpoint=args.output_dir + "/checkpoint-1708/")
     print("Saving last checkpoint of the model")
     trainer.model.save_pretrained(os.path.join(args.output_dir, "final_checkpoint/"))
 
