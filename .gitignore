@@ -7,3 +7,7 @@ nni_hello_hpo/data
 
 # LLM api key
 .env
+
+# model log
+wandb/
+mlruns/

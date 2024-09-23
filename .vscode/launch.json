@@ -18,12 +18,17 @@
         {
             "name": "Transformers",
             "type": "debugpy",
-            "python": "/usr/local/anaconda3/envs/torch/bin/python3.9",
+            "python": "/home/yhao/.conda/envs/torch/bin/python",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false,
             "cwd": "${workspaceFolder}",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "NCCL_IB_DISABLE": "1",
+                "NCCL_P2P_DISABLE": "1",
+            }
         },
         {
             "name": "LlaMa3",
