@@ -41,6 +41,37 @@ def calculate_16qi(offset=0.99, num_bins=16):
     return Q
 
 
+def create_normal_map(offset=0.9677083, use_extra_value=True):
+    """这里是用NF4表示8bit量化，因此v2是用256减，如果是4bit就用16减，非对称中就剩一位了
+    Args:
+        use_extra_value: True -> 正数部分8bit位，负数7bit位，然后0占一位
+    """
+    if use_extra_value:
+        # 笔记中估算的方法，非对称
+        # one more positive value, this is an asymmetric type
+        v1 = norm.ppf(torch.linspace(offset, 0.5, 9)[:-1]).tolist()
+        # we have 15 non-zero values in this data type
+        v2 = [0] * (256 - 15)
+        v3 = (-norm.ppf(torch.linspace(offset, 0.5, 8)[:-1])).tolist()
+    else:
+        # 对称量化
+        v1 = norm.ppf(torch.linspace(offset, 0.5, 8)[:-1]).tolist()
+        # we have 14 non-zero values in this data type
+        v2 = [0] * (256 - 14)
+        v3 = (-norm.ppf(torch.linspace(offset, 0.5, 8)[:-1])).tolist()
+    
+    v = v1 + v2 + v3
+
+    values = torch.Tensor(v)
+    values = values.sort().values
+    values /= values.max()
+
+    assert values.numel() == 256
+
+    return values
+
+
 if __name__ == "__main__":
-    Q = calculate_16qi()
+    # Q = calculate_16qi()
+    Q = create_normal_map()
     print(Q)
