@@ -50,7 +50,7 @@
             "type": "debugpy",
             "python": "/home/yhao/.conda/envs/llamacpp/bin/python",
             "request": "launch",
-            "program": "${file}",
+            "program": "${workspaceFolder}/AIGC/Lllama3/trl_stackllama.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "cwd": "${workspaceFolder}",
@@ -75,6 +75,70 @@
                 "--batch_size", "6",
                 "--gradient_accumulation_steps", "32",
                 "--gradient_checkpointing"
+            ]
+        },
+        {
+            "name": "StackLlaMa Merge",
+            "type": "debugpy",
+            "python": "/home/yhao/.conda/envs/llamacpp/bin/python",
+            "request": "launch",
+            "program": "${workspaceFolder}/AIGC/Lllama3/trl_stackllama.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "env": {
+                // "NCCL_IB_DISABLE": "1",
+                // "NCCL_P2P_DISABLE": "1",
+                "CUDA_VISIBLE_DEVICES": "0",
+                // "RANK": "0",
+                // "WORLD_SIZE": "1"
+            },
+            "args": [
+                "merge",
+                "--adapter_model_name", "/media/data/LLMS/StackLlama/checkpoints/final_checkpoint",
+                "--base_model_name", "/media/data/LLMS/Llama3-hf",
+                "--output_name", "/media/data/LLMS/StackLlama/llama-se"
+            ]
+        },
+        {
+            "name": "StackLlaMa RM",
+            "type": "debugpy",
+            "python": "/home/yhao/.conda/envs/llamacpp/bin/python",
+            "request": "launch",
+            "program": "${workspaceFolder}/AIGC/Lllama3/trl_stackllama.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "NCCL_IB_DISABLE": "1",
+                "NCCL_P2P_DISABLE": "1",
+                "CUDA_VISIBLE_DEVICES": "0",
+                "http_proxy": "http://localhost:7890",
+                "https_proxy": "http://localhost:7890",
+                "WANDB_PROJECT": "StackLlaMa RM",
+                "WANDB_LOG_MODEL": "false",
+                "WANDB_WATCH": "false",
+                // "WANDB_RUN_ID": "yo1c1p14",
+                // "WANDB_RESUME": "must",
+                "RANK": "0",
+                "WORLD_SIZE": "1"
+            },
+            "args": [
+                "rm",
+                "--model_path",
+                "/media/data/LLMS/StackLlama/llama-se",
+                "--subset", "data/reward",
+                "--num_workers", "8",
+                "--bf16",
+                "--batch_size", "6",
+                "--learning_rate", "2e-5",
+                "--weight_decay", "0.001",
+                "--eval_freq", "500",
+                "--save_freq", "500",
+                "--log_freq", "10",
+                "--gradient_accumulation_steps", "32",
+                "--gradient_checkpointing",
+                "--lr_scheduler_type", "linear"
             ]
         }
     ]
