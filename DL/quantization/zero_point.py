@@ -28,13 +28,15 @@ def zeropoint_quantize(rawtensor, signed=True):
         # use signed integer if necessary (perhaps due to HW considerations).
         zeropoint = (-qc * torch.min(rawtensor) - 128).round()
         quantensor = torch.clip((qc * rawtensor + zeropoint).round(), -128, 127)
+        quantensor = quantensor.to(torch.int8)
     else:
         # unsigned integer to represent the quantized range
         zeropoint = (-qc * torch.min(rawtensor)).round()
         quantensor = torch.clip((qc * rawtensor + zeropoint).round(), 0, 255)
-    
+        quantensor = quantensor.to(torch.uint8)
+
     dquantensor = (quantensor - zeropoint) / qc
-    return quantensor.to(torch.int8), dquantensor
+    return quantensor, dquantensor
 
 
 if __name__ == "__main__":
