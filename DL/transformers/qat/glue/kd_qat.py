@@ -6,6 +6,7 @@
 @Author :   yhao 
 @Email  :   data4.cmi@unilever.com
 @Desc   :   尝试在知识蒸馏中加上Quantization-Aware Training
+            参考链接：https://huggingface.co/docs/optimum/main/intel/openvino/optimization
 '''
 
 import logging
