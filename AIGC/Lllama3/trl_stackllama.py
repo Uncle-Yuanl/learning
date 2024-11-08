@@ -388,8 +388,9 @@ def run_rm_training(args, train_dataset, eval_dataset, tokenizer):
     output_name = (
         f"{model_name_split}_peft_stack-exchange-paired_rmts__{args.train_subset}_{args.learning_rate}"
     )
+    output_dir = projfolder + "/" + output_name
     training_args = TrainingArguments(
-        output_dir=output_name,
+        output_dir=output_dir,
         learning_rate=args.learning_rate,
         per_device_train_batch_size=args.batch_size,
         per_device_eval_batch_size=args.batch_size,
@@ -426,7 +427,7 @@ def run_rm_training(args, train_dataset, eval_dataset, tokenizer):
 
     trainer.train(args.resume_from_checkpoint)
     print("Saving last checkpoint of the model")
-    model.save_pretrained(output_name + "_peft_last_checkpoint")
+    model.save_pretrained(output_dir + "/last_checkpoint")
 
 
 def handle_rm(args):
