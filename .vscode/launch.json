@@ -140,6 +140,22 @@
                 "--gradient_checkpointing",
                 "--lr_scheduler_type", "linear"
             ]
-        }
+        },
+        {
+            "name": "Multimodal",
+            "type": "debugpy",
+            "python": "/home/yhao/.conda/envs/beit3/bin/python",
+            "request": "launch",
+            "program": "${workspaceFolder}/DL/multimodal/beit3.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "NCCL_IB_DISABLE": "1",
+                "NCCL_P2P_DISABLE": "1",
+                "PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION": "python",
+                "CUDA_VISIBLE_DEVICES": "0"
+            }
+        },
     ]
 }
