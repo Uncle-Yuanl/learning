@@ -33,6 +33,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments,
 from transformers import AutoModelForSequenceClassification, Trainer, PreTrainedTokenizerBase
 from transformers.utils import PaddingStrategy
 from transformers import BitsAndBytesConfig
+from transformers import Adafactor, pipeline
 import evaluate
 from accelerate import Accelerator
 from accelerate.utils import DistributedType
@@ -40,6 +41,8 @@ from peft import LoraConfig, prepare_model_for_kbit_training, get_peft_model, Ta
 from peft import PeftConfig, PeftModel
 from trl import SFTConfig, SFTTrainer
 from trl.trainer import ConstantLengthDataset
+from trl import AutoModelForCausalLMWithValueHead, PPOConfig, PPOTrainer, set_seed
+from trl.core import LengthSampler
 
 
 def handle_merge(args):
@@ -438,8 +441,180 @@ def handle_rm(args):
     run_rm_training(args, train_dataset, eval_dataset, tokenizer)
 
 
+def create_rl_datasets(tokenizer, args):
+    def preprocess_function(examples, tokenizer):
+        new_examples = {
+            "query": [],
+            "input_ids": [],
+        }
+        for question in examples["question"]:
+            query = "Question: " + question + "\n\nAnswer: "
+            tokenized_question = tokenizer(query, truncation=True)
+            new_examples["query"].append(query)
+            new_examples["input_ids"].append(tokenized_question["input_ids"])
+
+        return new_examples
+
+    train_dataset = load_dataset(
+        args.dataset_name,
+        data_dir=args.subset,
+        split=args.split,
+        verification_mode="no_checks"
+    )
+    train_dataset = train_dataset.select(range(40000))
+    original_columns = train_dataset.column_names
+    ds = train_dataset.map(
+        partial(preprocess_function, tokenizer=tokenizer),
+        batched=True,
+        num_proc=args.num_workers,
+        remove_columns=original_columns
+    )
+    ds = ds.filter(lambda x: len(x["input_ids"]) < 512, batched=False, num_proc=args.num_workers)
+    ds.set_format(type="torch")
+
+    return ds
+
+
+def rl_data_collator(data):
+    return {key: [d[key] for d in data] for key in data[0]}
+
+
+def run_rlhf_training(args, train_dataset, tokenizer):
+    current_device = Accelerator().local_process_index
+
+    lora_config = LoraConfig(
+        r=16,
+        lora_alpha=32,
+        lora_dropout=0.05,
+        bias="none",
+        task_type="CAUSAL_LM",
+    )
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.bfloat16,
+    )
+    model = AutoModelForCausalLMWithValueHead.from_pretrained(
+        args.model_path,
+        # load_in_8bit=args.load_in_8bit,  # 13188 MiB
+        # load_in_4bit=args.load_in_4bit,  # 10354 MiB
+        quantization_config=bnb_config,    # 6000  MiB
+        device_map={"": current_device},
+        peft_config=lora_config,
+    )
+    optimizer = None
+    if args.adafactor:
+        optimizer = Adafactor(
+            filter(lambda p: p.requires_grad, model.parameters()),
+            scale_parameter=False,
+            relative_step=False,
+            warmup_init=False,
+            lr=args.learning_rate,
+        )
+
+    config = PPOConfig(
+        steps=args.steps,
+        model_name=args.model_path,
+        learning_rate=args.learning_rate,
+        log_with=args.log_with,
+        batch_size=args.batch_size,
+        mini_batch_size=args.mini_batch_size,
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
+        optimize_cuda_cache=True,
+        early_stopping=args.early_stopping,
+        target_kl=args.target_kl,
+        ppo_epochs=args.ppo_epochs,
+        seed=args.seed,
+        init_kl_coef=args.init_kl_coef,
+        adap_kl_ctrl=args.adap_kl_ctrl,
+    )
+    ppo_trainer = PPOTrainer(
+        config=config,
+        model=model,
+        ref_model=None,
+        tokenizer=tokenizer,
+        dataset=train_dataset,
+        data_collator=rl_data_collator,
+        optimizer=optimizer
+    )
+
+    # We then build the sentiment analysis pipeline using our reward model, passing the
+    # model name and the sentiment analysis pipeline arguments. Let's also make sure to
+    # set the device to the same device as the PPOTrainer.
+    device = ppo_trainer.accelerator.device
+    if ppo_trainer.accelerator.num_processes == 1:
+        device = 0 if torch.cuda.is_available() else "cpu"  # to avoid a ` pipeline` bug
+    
+    # We then define the arguments to pass to the sentiment analysis pipeline.
+    # We set `return_all_scores` to True to get the sentiment score for each token.
+    sent_kwargs = {
+        "return_all_scores": True,
+        "function_to_apply": "none",
+        "batch_size": 16,
+        "truncation": True,
+    }
+    sentiment_pipe = pipeline(
+        "sentiment-analysis",
+        model=args.reward_model_name,
+        device_map={"": current_device},
+        model_kwargs={"quantization_config": bnb_config},
+        tokenizer=tokenizer,
+        return_token_type_ids=False,
+    )
+    if sentiment_pipe.model.config.pad_token_id is None:
+        if not isinstance(sentiment_pipe.model.config.eos_token_id, list):
+            sentiment_pipe.model.config.pad_token_id = sentiment_pipe.model.config.eos_token_id
+        else:
+            sentiment_pipe.model.config.pad_token_id = tokenizer.pad_token_id
+
+    # We then define the arguments to pass to the `generate` function. These arguments
+    # are passed to the `generate` function of the PPOTrainer, which is a wrapper around
+    # the `generate` function of the trained model.
+    generation_kwargs = {
+        # "min_length": -1,
+        "top_k": 0.0,
+        "top_p": 1.0,
+        "do_sample": True,
+        "pad_token_id": tokenizer.pad_token_id,
+        "eos_token_id": 100_000,
+    }
+    output_min_length = 32
+    output_max_length = args.output_max_length
+    output_length_sampler = LengthSampler(output_min_length, output_max_length)
+
+    for epoch, batch in tqdm(enumerate(ppo_trainer.dataloader)):
+        if epoch >= config.total_ppo_epochs:
+            break
+        
+        question_tensors = batch["input_ids"]
+        response_tensors = ppo_trainer.generate(
+            question_tensors,
+            return_prompt=False,
+            length_sampler=output_length_sampler,
+            **generation_kwargs,
+        )
+        batch["response"] = tokenizer.batch_decode(response_tensors, skip_special_tokens=True)
+        # Compute reward score (using the sentiment analysis pipeline)
+        texts = [q + r for q, r in zip(batch["query"], batch["response"])]
+        pipe_outputs = sentiment_pipe(texts, **sent_kwargs)
+        rewards = [torch.tensor(output[0]["score"] - args.reward_baseline) for output in pipe_outputs]
+
+        # Run PPO step
+        stats = ppo_trainer.step(question_tensors, response_tensors, rewards)
+        ppo_trainer.log_stats(stats, batch, rewards)
+
+        if args.save_freq and epoch and epoch % args.save_freq == 0:
+            ppo_trainer.save_pretrained(args.output_dir + f"step_{epoch}")
+
+
 def handle_rlhf(args):
-    pass
+    set_seed(args.seed)
+    # tqdm.pandas()
+    tokenizer = AutoTokenizer.from_pretrained(args.model_path)
+    tokenizer.pad_token = tokenizer.eos_token
+    train_dataset = create_rl_datasets(tokenizer, args)
+    run_rlhf_training(args, train_dataset, tokenizer)
 
 
 def main():
@@ -490,8 +665,23 @@ def main():
     rm_parser.set_defaults(func=handle_rm)
 
     # ========================= RL ==================================
-    rlhf_parser = subparsers.add_parser(name="rlhf", help="reinforcement learning")
-
+    rlhf_parser = subparsers.add_parser(name="rlhf", help="reinforcement learning", parents=[parser])
+    rlhf_parser.add_argument("--steps", type=int, default=20000, help="number of epochs")
+    rlhf_parser.add_argument("--load_in_8bit", type=bool, default=False, help="whether to load the model in 8bit")
+    rlhf_parser.add_argument("--load_in_4bit", type=bool, default=True, help="whether to load the model in 4bit")
+    rlhf_parser.add_argument("--reward_model_name", type=str, help="the reward model name")
+    rlhf_parser.add_argument("--reward_baseline", type=float, default=0.0, help="a baseline value that is subtracted from the reward")
+    rlhf_parser.add_argument("--adafactor", action="store_true")
+    rlhf_parser.add_argument("--log_with", type=str, default="", help="use 'wandb' to log with wandb")
+    rlhf_parser.add_argument("--mini_batch_size", type=int, default=1, help="the PPO minibatch size")
+    rlhf_parser.add_argument("--early_stopping", action="store_true")
+    rlhf_parser.add_argument("--target_kl", type=float, default=0.1, help="kl target for early stopping")
+    rlhf_parser.add_argument("--ppo_epochs", default=4, help="the number of ppo epochs")
+    rlhf_parser.add_argument("--init_kl_coef", type=float, default=0.2, help="Initial KL penalty coefficient (used for adaptive and linear control)")
+    rlhf_parser.add_argument("--adap_kl_ctrl", action="store_false")
+    rlhf_parser.add_argument("--output_max_length", type=int, default=128, help="maximum length for generation")
+    rlhf_parser.add_argument("--output_dir", type=str, default="", help="n steps to save the model")
+    rlhf_parser.set_defaults(func=handle_rlhf)
 
     # ========================= Merge ==================================
     merge_parser = subparsers.add_parser(name="merge", help="merge adapter to model", parents=[parser])
