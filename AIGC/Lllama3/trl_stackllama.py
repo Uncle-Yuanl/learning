@@ -514,6 +514,7 @@ def run_rlhf_training(args, train_dataset, tokenizer):
         )
 
     config = PPOConfig(
+        tracker_project_name=os.environ["WANDB_PROJECT"],
         steps=args.steps,
         model_name=args.model_path,
         learning_rate=args.learning_rate,
