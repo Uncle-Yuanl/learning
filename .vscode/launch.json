@@ -164,8 +164,8 @@
                 "WANDB_PROJECT": "StackLlaMa RLHF",
                 "WANDB_LOG_MODEL": "false",
                 "WANDB_WATCH": "false",
-                "WANDB_RUN_ID": "a1vk4gtf",
-                "WANDB_RESUME": "must",
+                // "WANDB_RUN_ID": "a1vk4gtf",
+                // "WANDB_RESUME": "must",
                 "RANK": "0",
                 "WORLD_SIZE": "1"
             },
@@ -203,5 +203,21 @@
                 "CUDA_VISIBLE_DEVICES": "0"
             }
         },
+        {
+            "name": "FastAPI (Uvicorn)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "AIGC.local.proxy:app",            // main.py 里实例是 app
+                "--host", "127.0.0.1",
+                "--port", "8000",
+                "--reload"             // 允许热重载
+            ],
+            "cwd": "${workspaceFolder}",
+            "jinja": true,
+            "justMyCode": true,
+            "console": "integratedTerminal"
+        }
     ]
 }
