@@ -29,9 +29,14 @@ def generate_data():
         yield f"FASTAPI Chunk {i}\n"
 
 
+def make_data():
+    return [f"New FASTAPI Chunk {i}\n" for i in range(10)]
+
+
 @app.get("/stream")
 async def stream_data():
-    return StreamingResponse(generate_data(), media_type="application/octet-stream")
+    # return StreamingResponse(generate_data(), media_type="application/octet-stream")
+    return StreamingResponse(make_data(), media_type="application/octet-stream")
 
 
 if __name__ == "__main__":
