@@ -17,7 +17,6 @@ logger = logging.getLogger(f'【{__file__}】')
 import os
 from dotenv import load_dotenv, find_dotenv
 from openai import OpenAI, DefaultHttpxClient
-from openai import AsyncOpenAI, DefaultAsyncHttpxClient
 
 
 load_dotenv(find_dotenv(".env"), override=True)
@@ -35,18 +34,6 @@ completion = client.chat.completions.create(
         {"role": "system", "content": "You are a poetic assistant, skilled in explaining complex programming concepts with creative flair."},
         {"role": "user", "content": "Compose a poem that explains the concept of recursion in programming."}
     ]
-)
-
-completion2 = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=[
-        {"role": "system", "content": "You are a poetic assistant, skilled in explaining complex programming concepts with creative flair."},
-        {"role": "user", "content": "Compose a poem that explains the concept of recursion in programming."}
-    ],
-    timeout=600,
-    max_tokens=4096,
-    temperature=0.0,
-    stream=True  # 加了就错
 )
 
 result = completion.choices[0].message.content
