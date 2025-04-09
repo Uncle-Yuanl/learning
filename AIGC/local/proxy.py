@@ -21,6 +21,7 @@ import json
 import requests
 import httpx, aiohttp
 from fastapi import FastAPI
+from fastapi.responses import StreamingResponse, JSONResponse
 
 load_dotenv(find_dotenv(".env"), override=False)
 AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID")
@@ -93,6 +94,9 @@ async def get_completion(query: Dict, model="gpt-4o-mini"):
         ) as response:
             status = response.status
             if status == 200:
-                return await response.json()
+                if query.get("stream"):
+                    return StreamingResponse(await response.text(), media_type="text/event-stream")
+                else:
+                    return JSONResponse(await response.json())
             else:
                 raise Exception(f"Request failed: {response.status_code} {response.text}")
