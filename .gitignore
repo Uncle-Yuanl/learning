@@ -11,3 +11,8 @@ nni_hello_hpo/data
 # model log
 wandb/
 mlruns/
+
+# metagpt
+metagpt/
+workspace/
+logs/
