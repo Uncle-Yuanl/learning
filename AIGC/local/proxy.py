@@ -59,6 +59,23 @@ async def generate_access_token(client_id, client_secret):
         raise Exception(f"Authentication failed: {response.json()}")
 
 
+async def stream_generator(session, response):
+    """以生成器的方式返回chunk，而不是一次性获取所有chunk，再封装
+    """
+    try:
+        # async for chunk in response.content.iter_chunked(1024):
+        async for line in response.content:
+            decoded_line = line.decode("utf-8")
+            logger.info(f"中转站转发： {decoded_line[:10]}")
+            yield decoded_line
+    except Exception as e:
+        logger.error(f"流转发出错：{e}")
+        yield "event: error\ndata: [STREAM ERROR]\n\n"
+    finally:
+        await response.release()  # 确保释放连接
+        await session.close()
+
+
 @app.post("/v1/chat/completions")
 async def get_completion(query: Dict, model="gpt-4o-mini"):
     """Call the OpenAI API to get a completion for the given prompt."""
@@ -76,27 +93,48 @@ async def get_completion(query: Dict, model="gpt-4o-mini"):
     env = 'prod' if AZURE_OPENAI_SUBSCRIPTION_KEY=='fa3bfc057f4946f09099ebc6214f564a' else 'uat'
     unified_api = f"https://aiflmapi{env}.unilever.com/openai4/az_openai_{model}_chat"
 
-    # response = requests.post(
-    #     url=unified_api,
-    #     headers=headers,
-    #     data=json.dumps(query)
-    # )
-    # async with httpx.AsyncClient() as client:
-    #     response = await client.post(
+    # async with aiohttp.ClientSession(headers=headers) as session:
+    #     async with session.post(
     #         url=unified_api,
-    #         headers={"Content-Type": "application/json", **headers},
     #         data=json.dumps(query)
-    #     )
-    async with aiohttp.ClientSession(headers=headers) as session:
-        async with session.post(
+    #     ) as response:
+    #         status = response.status
+    #         if status == 200:
+    #             if query.get("stream"):
+    #                 gen = stream_generator(response)
+    #                 # await response.text()在代理端等待实际服务端的所有结果返回
+    #                 # 即使在客户端是chunk形式，但是高并发情况下代理端很容易崩掉
+    #                 # return StreamingResponse(await response.text(), media_type="text/event-stream")
+    #                 logger.critical(f"response closed")
+    #                 return StreamingResponse(gen, media_type="text/event-stream")
+    #             else:
+    #                 return JSONResponse(await response.json())
+    #         else:
+    #             text = await response.text()
+    #             logger.error(f"OpenAI proxy请求失败: {response.status}, {text}")
+    #             raise Exception(f"Request failed: {response.status_code} {response.text}")
+    #     logger.critical(f"session closed")
+    try:
+        session = aiohttp.ClientSession(headers=headers)
+        response = await session.post(
             url=unified_api,
-            data=json.dumps(query)
-        ) as response:
-            status = response.status
-            if status == 200:
-                if query.get("stream"):
-                    return StreamingResponse(await response.text(), media_type="text/event-stream")
-                else:
-                    return JSONResponse(await response.json())
+            data=json.dumps(query),
+            timeout=aiohttp.ClientTimeout(total=600)
+        )
+        if response.status == 200:
+            if query.get("stream"):
+                return StreamingResponse(
+                    stream_generator(session, response),
+                    media_type="text/event-stream"
+                )
             else:
-                raise Exception(f"Request failed: {response.status_code} {response.text}")
+                result = await response.json()
+                await session.close()
+                return JSONResponse(result)
+        else:
+            text = await response.text()
+            await session.close()
+            raise Exception(status_code=response.status, detail=text)
+    except Exception as e:
+        await session.close()
+        raise e

@@ -26,6 +26,7 @@ app = FastAPI()
 def generate_data():
     for i in range(1, 11):
         time.sleep(1)  # 模拟每秒生成一个块的耗时操作
+        logger.info(f"prepare to yield {i}")
         yield f"FASTAPI Chunk {i}\n"
 
 
@@ -35,8 +36,8 @@ def make_data():
 
 @app.get("/stream")
 async def stream_data():
-    # return StreamingResponse(generate_data(), media_type="application/octet-stream")
-    return StreamingResponse(make_data(), media_type="application/octet-stream")
+    return StreamingResponse(generate_data(), media_type="application/octet-stream")
+    # return StreamingResponse(make_data(), media_type="application/octet-stream")
 
 
 if __name__ == "__main__":
