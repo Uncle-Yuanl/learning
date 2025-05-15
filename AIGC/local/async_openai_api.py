@@ -43,10 +43,11 @@ async def get_completion():
         stream=True  # 加了就错
     )
 
+    logger.critical(f"In client, start to read chunk")
     async for chunk in completion:
-        print(chunk)
-
-    print()
+        if chunk.choices:
+            logger.info(f"服务端获取：{chunk.choices[0].delta.content}")
+        print()
 
 
 if __name__ == "__main__":
