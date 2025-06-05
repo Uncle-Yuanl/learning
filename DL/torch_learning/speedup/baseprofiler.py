@@ -39,7 +39,8 @@ transform = T.Compose(
 savepath = "/media/data/datasets"
 train_set = torchvision.datasets.CIFAR10(root=savepath, train=True, download=True, transform=transform)
 # train_loader = torch.utils.data.DataLoader(train_set, batch_size=64, shuffle=True)
-train_loader = torch.utils.data.DataLoader(train_set, num_workers=8, batch_size=64, shuffle=True)
+# train_loader = torch.utils.data.DataLoader(train_set, num_workers=8, batch_size=64, shuffle=True)
+train_loader = torch.utils.data.DataLoader(train_set, num_workers=8, pin_memory=True, batch_size=64, shuffle=True)
 
 # 创建ResNet模型、损失函数和优化器对象。为了在GPU上运行，将模型和损失转移到GPU设备上。
 device = torch.device("cuda")
@@ -51,7 +52,9 @@ model.train()
 
 # 定义对每批输入数据的训练步骤。
 def train(data):
-    inputs, labels = data[0].to(device=device), data[1].to(device=device)
+    # inputs, labels = data[0].to(device=device), data[1].to(device=device)
+    # 异步传输，在数据从内存到显存的过程中，cpu不挂起
+    inputs, labels = data[0].to(device=device, non_blocking=True), data[1].to(device=device, non_blocking=True)
     outputs = model(inputs)
     loss = criterion(outputs, labels)
     optimizer.zero_grad()
@@ -69,7 +72,8 @@ with profiler.profile(
         wait=1, warmup=4, active=3, repeat=1
     ),
     # on_trace_ready=torch.profiler.tensorboard_trace_handler('./resnet18/baseline'),
-    on_trace_ready=torch.profiler.tensorboard_trace_handler('./resnet18/moreworkers'),
+    # on_trace_ready=torch.profiler.tensorboard_trace_handler('./resnet18/moreworkers'),
+    on_trace_ready=torch.profiler.tensorboard_trace_handler('./resnet18/transfereffi'),
     record_shapes=True,
     profile_memory=True,
     with_stack=True
