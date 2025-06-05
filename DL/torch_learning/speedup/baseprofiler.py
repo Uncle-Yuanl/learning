@@ -55,8 +55,10 @@ def train(data):
     # inputs, labels = data[0].to(device=device), data[1].to(device=device)
     # 异步传输，在数据从内存到显存的过程中，cpu不挂起
     inputs, labels = data[0].to(device=device, non_blocking=True), data[1].to(device=device, non_blocking=True)
-    outputs = model(inputs)
-    loss = criterion(outputs, labels)
+    # 开启amp
+    with torch.autocast(device_type='cuda', dtype=torch.float16):
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
@@ -73,7 +75,8 @@ with profiler.profile(
     ),
     # on_trace_ready=torch.profiler.tensorboard_trace_handler('./resnet18/baseline'),
     # on_trace_ready=torch.profiler.tensorboard_trace_handler('./resnet18/moreworkers'),
-    on_trace_ready=torch.profiler.tensorboard_trace_handler('./resnet18/transfereffi'),
+    # on_trace_ready=torch.profiler.tensorboard_trace_handler('./resnet18/transfereffi'),
+    on_trace_ready=torch.profiler.tensorboard_trace_handler('./resnet18/ampmixprecision'),
     record_shapes=True,
     profile_memory=True,
     with_stack=True
