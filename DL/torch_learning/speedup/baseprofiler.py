@@ -40,7 +40,7 @@ savepath = "/media/data/datasets"
 train_set = torchvision.datasets.CIFAR10(root=savepath, train=True, download=True, transform=transform)
 # train_loader = torch.utils.data.DataLoader(train_set, batch_size=64, shuffle=True)
 # train_loader = torch.utils.data.DataLoader(train_set, num_workers=8, batch_size=64, shuffle=True)
-train_loader = torch.utils.data.DataLoader(train_set, num_workers=8, pin_memory=True, batch_size=64, shuffle=True)
+train_loader = torch.utils.data.DataLoader(train_set, num_workers=8, pin_memory=True, batch_size=512, shuffle=True)
 
 # 创建ResNet模型、损失函数和优化器对象。为了在GPU上运行，将模型和损失转移到GPU设备上。
 device = torch.device("cuda")
@@ -75,8 +75,8 @@ with profiler.profile(
     ),
     # on_trace_ready=torch.profiler.tensorboard_trace_handler('./resnet18/baseline'),
     # on_trace_ready=torch.profiler.tensorboard_trace_handler('./resnet18/moreworkers'),
-    # on_trace_ready=torch.profiler.tensorboard_trace_handler('./resnet18/transfereffi'),
-    on_trace_ready=torch.profiler.tensorboard_trace_handler('./resnet18/ampmixprecision'),
+    # on_trace_ready=torch.profiler.tensorboard_trace_handler('./resnet18/transfereffi_bs512'),
+    on_trace_ready=torch.profiler.tensorboard_trace_handler('./resnet18/ampmixprecision_bs512'),
     record_shapes=True,
     profile_memory=True,
     with_stack=True
