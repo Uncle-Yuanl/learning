@@ -550,7 +550,8 @@ def run_rlhf_training(args, train_dataset, tokenizer):
     # We then define the arguments to pass to the sentiment analysis pipeline.
     # We set `return_all_scores` to True to get the sentiment score for each token.
     sent_kwargs = {
-        "return_all_scores": True,
+        # "return_all_scores": True,
+        "top_k": None,
         "function_to_apply": "none",
         "batch_size": 16,
         "truncation": True,
