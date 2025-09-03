@@ -209,15 +209,23 @@
             "request": "launch",
             "module": "uvicorn",
             "args": [
-                "AIGC.local.proxy:app",            // main.py 里实例是 app
+                "AIGC.local.proxy_upgrade:app",            // main.py 里实例是 app
                 "--host", "127.0.0.1",
                 "--port", "8000",
-                "--reload"             // 允许热重载
+                // "--reload"             // 允许热重载
             ],
             "cwd": "${workspaceFolder}",
             "jinja": true,
             "justMyCode": true,
             "console": "integratedTerminal"
+        },
+        {
+            "name": "android appium",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false
         }
     ]
 }
