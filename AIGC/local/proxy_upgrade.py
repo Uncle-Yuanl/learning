@@ -93,7 +93,7 @@ async def get_completion(
         "User-Agent": ""  # 对aiohttp有效，httpx无效
     }
     env = 'prod' if AZURE_OPENAI_SUBSCRIPTION_KEY=='fa3bfc057f4946f09099ebc6214f564a' else 'uat'
-    unified_api = f"https://aiflmapi{env}.unilever.com/openai4/az_openai_{model}_chat"
+    unified_api = f"https://bnlwe-ai03-q-931039-apim-01.azure-api.net/openai4/az_openai_{model}_chat"
     session = request.app.state.session
     data = json.dumps(query)
 
